@@ -11,9 +11,13 @@
 #include <string>
 #include <Windowsx.h>
 #include <sstream>
+#include <Shellapi.h>
 #include <Psapi.h>
 
 #define MAX_LOADSTRING 100
+
+#define MY_NOTIFICATION_ICON 2
+#define MY_NOTIFY_ICON_MESSAGE_ID (WM_USER + 1)
 
 typedef struct {
     HTHUMBNAIL thumb;
@@ -253,6 +257,19 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
    }
 
    g_programState.hWnd = hWnd;
+   
+   NOTIFYICONDATA nid = {};
+   ZeroMemory(&nid,sizeof(NOTIFYICONDATA));
+   nid.cbSize = sizeof(NOTIFYICONDATA);
+   nid.uID = MY_NOTIFICATION_ICON;
+   nid.uFlags = NIF_ICON | NIF_TIP | NIF_MESSAGE ;
+   nid.hWnd = hWnd;
+   nid.uCallbackMessage = MY_NOTIFY_ICON_MESSAGE_ID;
+#define TIP (_T("AltTabber\n- Ctrl-Alt-3 to open overlay\n- Alt-F4 when overlay is active to quit"))
+   _tcsncpy_s(nid.szTip, TIP, _tcslen(TIP));
+#undef TIP
+   nid.hIcon = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_SMALL));
+   HRESULT sniHr = Shell_NotifyIcon(NIM_ADD, &nid);
 
    return TRUE;
 }
@@ -578,6 +595,25 @@ void SelectByMouse(DWORD lParam)
     }
 }
 
+void ActivateSwitcher()
+{
+            log(_T("activating switcher\n"));
+            g_programState.prevActiveWindow = GetForegroundWindow();
+            log(_T("previous window is %p\n"), (void*)g_programState.prevActiveWindow);
+            g_programState.showing = TRUE;
+            auto monitorGeom = GetMonitorGeometry();
+            SetWindowPos(g_programState.hWnd, HWND_TOPMOST, monitorGeom.r.left, monitorGeom.r.top, monitorGeom.r.right - monitorGeom.r.left, monitorGeom.r.bottom - monitorGeom.r.top, SWP_SHOWWINDOW);
+            //SetWindowPos(hWnd, HWND_TOPMOST, monitorGeom.r.left, monitorGeom.r.top, monitorGeom.r.right - monitorGeom.r.left, 100, SWP_SHOWWINDOW);
+            SetForegroundWindow(g_programState.hWnd);
+            SetFocus(g_programState.hWnd);
+
+            g_programState.filter = _T("");
+            CreateThumbnails(g_programState.filter);
+            SetThumbnails();
+
+            g_programState.ignoreNext = TRUE;
+}
+
 //
 //  FUNCTION: WndProc(HWND, UINT, WPARAM, LPARAM)
 //
@@ -596,6 +632,14 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
 	switch (message)
 	{
+	case MY_NOTIFY_ICON_MESSAGE_ID: {
+		auto what = LOWORD(lParam);
+		switch(what) {
+		case WM_LBUTTONUP:
+			ActivateSwitcher();
+			break;
+		}
+		break; }
 	case WM_COMMAND:
 		wmId    = LOWORD(wParam);
 		wmEvent = HIWORD(wParam);
@@ -639,21 +683,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         if(g_programState.showing) {
             SelectCurrent();
         } else {
-            log(_T("activating switcher\n"));
-            g_programState.prevActiveWindow = GetForegroundWindow();
-            log(_T("previous window is %p\n"), (void*)g_programState.prevActiveWindow);
-            g_programState.showing = TRUE;
-            auto monitorGeom = GetMonitorGeometry();
-            SetWindowPos(hWnd, HWND_TOPMOST, monitorGeom.r.left, monitorGeom.r.top, monitorGeom.r.right - monitorGeom.r.left, monitorGeom.r.bottom - monitorGeom.r.top, SWP_SHOWWINDOW);
-            //SetWindowPos(hWnd, HWND_TOPMOST, monitorGeom.r.left, monitorGeom.r.top, monitorGeom.r.right - monitorGeom.r.left, 100, SWP_SHOWWINDOW);
-            SetForegroundWindow(hWnd);
-            SetFocus(hWnd);
-
-            g_programState.filter = _T("");
-            CreateThumbnails(g_programState.filter);
-            SetThumbnails();
-
-            g_programState.ignoreNext = TRUE;
+			ActivateSwitcher();
         }
         break;
     case WM_MOUSEWHEEL: {
