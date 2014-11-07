@@ -31,7 +31,7 @@ struct {
     HWND prevActiveWindow;
     signed long activeSlot;
     BOOL logging;
-    BOOL logFileExists;
+	FILE* freopened;
     HWND hWnd;
     std::map<HMONITOR, std::vector<AppThumb_t> > thumbnails;
     std::vector<SlotThing_t> slots;
@@ -42,7 +42,7 @@ struct {
     NULL,
     -1,
     FALSE,
-    FALSE,
+    NULL,
 };
 
 // Global Variables:
@@ -60,7 +60,7 @@ inline void log(LPTSTR fmt, ...)
 {
     if(!g_programState.logging) return;
 
-    if(!g_programState.logFileExists) {
+    if(!g_programState.freopened) {
         // replace stdout with log file
         TCHAR tempPath[MAX_PATH + 1];
         auto hr = GetTempPath(MAX_PATH, tempPath);
@@ -70,9 +70,7 @@ inline void log(LPTSTR fmt, ...)
         UINT hrTFN = GetTempFileName(tempPath, _T("altTabber"), 0, tempFile);
         if(hrTFN == 0 || hrTFN == ERROR_BUFFER_OVERFLOW) abort();
 
-        _tfreopen(tempFile, _T("w"), stdout);
-
-        g_programState.logFileExists = TRUE;
+        _tfreopen_s(&g_programState.freopened, tempFile, _T("w"), stdout);
     }
 
     va_list ap;
@@ -364,12 +362,9 @@ void CreateThumbnails(std::wstring const& filter)
     log(_T("enum desktop windows: %d\n"), hr);
 }
 
-void SetThumbnails()
+template<typename F>
+void PerformSlotting(F& functor)
 {
-    g_programState.activeSlot = -1;
-    g_programState.slots.clear();
-    //ShowWindow(g_programState.hWnd, SW_HIDE);
-    size_t nthSlot = 0;
     auto mis = GetMonitorGeometry();
     for(size_t i = 0; i < mis.monitors.size(); ++i) {
         auto& mi = mis.monitors[i];
@@ -378,19 +373,36 @@ void SetThumbnails()
 		
         unsigned int nTiles = 1;
         while(nTiles < nWindows) nTiles <<= 1;
-		nTiles = max(1, nTiles >> 1);
+		if(nTiles != nWindows) nTiles = max(1, nTiles >> 1);
 		
-        long lala = (long)sqrt((double)nTiles);
+        long lala = (long)(sqrt((double)nTiles) + 0.5);
 
         long l1 = lala;
         long l2 = lala;
-        while((l1) * (l2) < nWindows) l1++;
+        while(((unsigned)l1) * ((unsigned)l2) < nWindows) l1++;
         lala = l1 * l2;
 
         long ws = (mi.extent.right - mi.extent.left) / l1;
         long hs = (mi.extent.bottom - mi.extent.top) / l2;
 
         for(size_t j = 0; j < thumbs.size(); ++j) {
+			functor(mi, j, l1, l2, hs, ws);
+        }
+    }
+}
+
+void SetThumbnails()
+{
+    g_programState.activeSlot = -1;
+    g_programState.slots.clear();
+    //ShowWindow(g_programState.hWnd, SW_HIDE);
+    size_t nthSlot = 0;
+
+	MonitorGeom_t mis = GetMonitorGeometry();
+
+	PerformSlotting([&](MonitorInfo_t& mi, size_t j, long l1, long l2, long hs, long ws) {
+			AppThumb_t& thumb = g_programState.thumbnails[mi.hMonitor][j];
+
             long x = (j % l1) * ws + 3;
             long y = (j / l1) * hs + hs / 3;
             long x1 = x + ws - 3;
@@ -405,12 +417,12 @@ void SetThumbnails()
             thProps.dwFlags = DWM_TNP_RECTDESTINATION | DWM_TNP_VISIBLE;
             thProps.rcDestination = r;
             thProps.fVisible = TRUE;
-            DwmUpdateThumbnailProperties(thumbs[j].thumb, &thProps);
+            DwmUpdateThumbnailProperties(thumb.thumb, &thProps);
 
-            if(thumbs[j].hwnd == g_programState.prevActiveWindow) g_programState.activeSlot = nthSlot;
+            if(thumb.hwnd == g_programState.prevActiveWindow) g_programState.activeSlot = nthSlot;
 
             SlotThing_t st;
-            st.hwnd = thumbs[j].hwnd;
+            st.hwnd = thumb.hwnd;
             st.r.left = mi.extent.left - mis.r.left + (j % l1) * ws;
             st.r.top = mi.extent.top - mis.r.top + (j / l1) * hs;
             st.r.right = st.r.left + ws;
@@ -419,8 +431,7 @@ void SetThumbnails()
             g_programState.slots.push_back(st);
 
             ++nthSlot;
-        }
-    }
+	});
 }
 
 void Cleanup()
@@ -432,7 +443,7 @@ void Cleanup()
     }
     g_programState.thumbnails.clear();
     
-    if(g_programState.logFileExists) fclose(stdout);
+    if(g_programState.freopened != NULL) fclose(g_programState.freopened);
 }
 
 void OnPaint(HDC hdc)
@@ -464,26 +475,9 @@ void OnPaint(HDC hdc)
 
     SelectObject(hdc, GetStockObject(BLACK_BRUSH));
 
-    for(size_t i = 0; i < mis.monitors.size(); ++i) {
-        auto& mi = mis.monitors[i];
-        auto& thumbs = g_programState.thumbnails[mi.hMonitor];
-        auto nWindows = thumbs.size();
-
-        unsigned int nTiles = 1;
-        while(nTiles < nWindows) nTiles <<= 1;
-		nTiles = max(1, nTiles >> 1);
-
-        long lala = (long)sqrt((double)nTiles);
-
-        long l1 = lala;
-        long l2 = lala;
-        while((l1) * (l2) < nWindows) l1++;
-        lala = l1 * l2;
-
-        long ws = (mi.extent.right - mi.extent.left) / l1;
-        long hs = (mi.extent.bottom - mi.extent.top) / l2;
-
-        for(size_t j = 0; j < thumbs.size(); ++j) {
+	PerformSlotting([&](MonitorInfo_t& mi, size_t j, long l1, long l2, long hs, long ws) {
+            HWND hwnd = g_programState.thumbnails[mi.hMonitor][j].hwnd;
+			
             long x = (j % l1) * ws + 3;
             long y = (j / l1) * hs + 3;
             long x1 = x + ws - 3;
@@ -493,16 +487,13 @@ void OnPaint(HDC hdc)
             r.right = mi.extent.left - mis.r.left + x1;
             r.top = mi.extent.top - mis.r.top + y;
             r.bottom = mi.extent.top - mis.r.top + y1;
-
-            HWND hwnd = thumbs[j].hwnd;
             
             TCHAR str[257];
             GetWindowText(hwnd, str, 256);
             std::wstring title(str);
 
             DrawText(hdc, str, -1, &r, DT_BOTTOM | DT_LEFT | DT_WORDBREAK);
-        }
-    }
+	});
 
     SelectObject(hdc, originalFont);
     SelectObject(hdc, originalBrush);
@@ -572,7 +563,7 @@ void SelectByMouse(DWORD lParam)
     int xPos = GET_X_LPARAM(lParam);
     int yPos = GET_Y_LPARAM(lParam);
     POINT pt = { xPos, yPos };
-    auto found = std::find_if(g_programState.slots.begin(), g_programState.slots.end(), [&](SlotThing_t const& thing) -> bool {
+    auto found = std::find_if(g_programState.slots.begin(), g_programState.slots.end(), [&](SlotThing_t const& thing) -> BOOL {
         return PtInRect(&thing.r, pt);
     });
     if(found != g_programState.slots.end()) {
