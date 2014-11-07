@@ -432,6 +432,8 @@ void SetThumbnails()
 
             ++nthSlot;
 	});
+
+	if(g_programState.activeSlot < 0) g_programState.activeSlot = 0;
 }
 
 void Cleanup()
@@ -473,7 +475,9 @@ void OnPaint(HDC hdc)
         Rectangle(hdc, r.left, r.top, r.right, r.bottom);
     }
 
-    SelectObject(hdc, GetStockObject(BLACK_BRUSH));
+	SelectObject(hdc, GetStockObject(WHITE_BRUSH));
+	SelectObject(hdc, GetStockObject(BLACK_PEN));
+	int prevBkMode = SetBkMode(hdc, TRANSPARENT);
 
 	PerformSlotting([&](MonitorInfo_t& mi, size_t j, long l1, long l2, long hs, long ws) {
             HWND hwnd = g_programState.thumbnails[mi.hMonitor][j].hwnd;
@@ -481,7 +485,7 @@ void OnPaint(HDC hdc)
             long x = (j % l1) * ws + 3;
             long y = (j / l1) * hs + 3;
             long x1 = x + ws - 3;
-            long y1 = y + hs - 2 * hs / 3;
+            long y1 = y + hs - 2 * hs / 3 - 2;
             RECT r;
             r.left = mi.extent.left - mis.r.left + x;
             r.right = mi.extent.left - mis.r.left + x1;
@@ -492,9 +496,11 @@ void OnPaint(HDC hdc)
             GetWindowText(hwnd, str, 256);
             std::wstring title(str);
 
+			Rectangle(hdc, r.left, r.top, r.right, r.bottom);
             DrawText(hdc, str, -1, &r, DT_BOTTOM | DT_LEFT | DT_WORDBREAK);
 	});
 
+	SetBkMode(hdc, prevBkMode);
     SelectObject(hdc, originalFont);
     SelectObject(hdc, originalBrush);
     SelectObject(hdc, original);
@@ -504,7 +510,7 @@ void MoveNext(DWORD direction)
 {
     if(g_programState.activeSlot < 0) {
         if(g_programState.slots.size() > 0) {
-            g_programState.activeSlot = 0;
+            g_programState.activeSlot = g_programState.slots.size() - 1;
         } else {
             return;
         }
@@ -675,10 +681,14 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         case VK_ESCAPE:
             QuitOverlay();
             break;
-        case VK_RIGHT:
         case VK_TAB:
-            MoveNext(VK_RIGHT);
+			if(GetAsyncKeyState(VK_SHIFT)) {
+				MoveNext(VK_LEFT);
+			} else {
+				MoveNext(VK_RIGHT);
+			}
             break;
+        case VK_RIGHT:
         case VK_UP:
         case VK_DOWN:
         case VK_LEFT:
