@@ -450,7 +450,7 @@ void SetThumbnails()
             ++nthSlot;
 	});
 
-	if(g_programState.activeSlot < 0) g_programState.activeSlot = 0;
+	if(g_programState.activeSlot < 0 && g_programState.slots.size() > 0) g_programState.activeSlot = 0;
 }
 
 void Cleanup()
