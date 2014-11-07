@@ -292,6 +292,26 @@ inline BOOL IsAltTabWindow(HWND hwnd)
     return TRUE;
 }
 
+BOOL GetImagePathName(HWND hwnd, std::wstring& imagePathName)
+{
+	BOOL hr = 0;
+    TCHAR str2[MAX_PATH + 1];
+    DWORD procId;
+    if(GetWindowThreadProcessId(hwnd, &procId) > 0) {
+        auto hnd = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, procId);
+        if(hnd != NULL) {
+			UINT len;
+            if((len = GetModuleFileNameEx(hnd, NULL, str2, MAX_PATH)) > 0) {
+				imagePathName.assign(&str2[0], &str2[len]);
+				hr = 1;
+            }
+            CloseHandle(hnd);
+        }
+    }
+
+	return hr;
+}
+
 BOOL CALLBACK enumWindows(HWND hwnd, LPARAM lParam)
 {
     if(hwnd == g_programState.hWnd) return TRUE;
@@ -300,24 +320,17 @@ BOOL CALLBACK enumWindows(HWND hwnd, LPARAM lParam)
     std::wstring filter = *((std::wstring const*)lParam);
 
     TCHAR str[257];
-    TCHAR str2[257];
     GetWindowText(hwnd, str, 256);
     std::wstring title(str);
 
-#if 0
-    DWORD procId;
-    if(GetWindowThreadProcessId(hwnd, &procId) > 0) {
-        auto hnd = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, procId);
-        if(hnd != NULL) {
-            if(GetModuleFileNameEx(hnd, NULL, str2, 256) > 0) {
-                std::wstringstream wss;
-                wss << std::wstring(str2) << std::wstring(L" // ") << title;
-                title = wss.str();
-            }
-            CloseHandle(hnd);
-        }
-    }
-#endif
+	std::wstring imagePathName;
+	if(GetImagePathName(hwnd, imagePathName)) {
+        std::wstringstream wss;
+        wss << imagePathName << std::wstring(L" // ") << title;
+        title = wss.str();
+	}
+
+	log(_T("the label is: %ls\n"), title.c_str());
 
     std::transform(title.begin(), title.end(), title.begin(), ::tolower);
     std::transform(filter.begin(), filter.end(), filter.begin(), ::tolower);
@@ -362,15 +375,16 @@ void SetThumbnails()
         auto& mi = mis.monitors[i];
         auto& thumbs = g_programState.thumbnails[mi.hMonitor];
         auto nWindows = thumbs.size();
-
+		
         unsigned int nTiles = 1;
         while(nTiles < nWindows) nTiles <<= 1;
-
-        long lala = (long)sqrt((double)nTiles) + 1;
+		nTiles = max(1, nTiles >> 1);
+		
+        long lala = (long)sqrt((double)nTiles);
 
         long l1 = lala;
         long l2 = lala;
-        while((l1 - 1) * l2 > nWindows) l1--;
+        while((l1) * (l2) < nWindows) l1++;
         lala = l1 * l2;
 
         long ws = (mi.extent.right - mi.extent.left) / l1;
@@ -457,12 +471,13 @@ void OnPaint(HDC hdc)
 
         unsigned int nTiles = 1;
         while(nTiles < nWindows) nTiles <<= 1;
+		nTiles = max(1, nTiles >> 1);
 
-        long lala = (long)sqrt((double)nTiles) + 1;
+        long lala = (long)sqrt((double)nTiles);
 
         long l1 = lala;
         long l2 = lala;
-        while((l1 - 1) * l2 > nWindows) l1--;
+        while((l1) * (l2) < nWindows) l1++;
         lala = l1 * l2;
 
         long ws = (mi.extent.right - mi.extent.left) / l1;
@@ -482,23 +497,8 @@ void OnPaint(HDC hdc)
             HWND hwnd = thumbs[j].hwnd;
             
             TCHAR str[257];
-            TCHAR str2[257];
             GetWindowText(hwnd, str, 256);
             std::wstring title(str);
-#if 0
-            DWORD procId;
-            if(GetWindowThreadProcessId(hwnd, &procId) > 0) {
-                auto hnd = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, procId);
-                if(hnd != NULL) {
-                    if(GetModuleFileNameEx(hnd, NULL, str2, 256) > 0) {
-                        std::wstringstream wss;
-                        wss << std::wstring(str2) << std::wstring(L" // ") << title;
-                        title = wss.str();
-                    }
-                    CloseHandle(hnd);
-                }
-            }
-#endif
 
             DrawText(hdc, str, -1, &r, DT_BOTTOM | DT_LEFT | DT_WORDBREAK);
         }
