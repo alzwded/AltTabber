@@ -235,7 +235,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
    auto geom = GetMonitorGeometry();
    // SetWindowPos(hWnd, HWND_TOPMOST, geom.x, geom.y, geom.cx, geom.cy);
 
-   hWnd = CreateWindowEx(WS_EX_TOPMOST, szWindowClass, szTitle, 
+   hWnd = CreateWindowEx(WS_EX_TOPMOST | WS_EX_COMPOSITED, szWindowClass, szTitle, 
       WS_POPUP,
       CW_USEDEFAULT, CW_USEDEFAULT, 400, 400, NULL, NULL, hInstance, NULL);
 
