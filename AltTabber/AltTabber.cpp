@@ -292,8 +292,6 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 
 inline BOOL IsAltTabWindow(HWND hwnd)
 {
-    TITLEBARINFO ti;
-
     if(!IsWindowVisible(hwnd))
         return FALSE;
 
@@ -313,11 +311,16 @@ inline BOOL IsAltTabWindow(HWND hwnd)
         return FALSE;
 #endif
 
+	// this prevents borderless windows from showing up (like steam or remote desktop)
+#if 0
+    TITLEBARINFO ti;
+
     // the following removes some task tray programs and "Program Manager"
     ti.cbSize = sizeof(ti);
     GetTitleBarInfo(hwnd, &ti);
     if(ti.rgstate[0] & STATE_SYSTEM_INVISIBLE)
         return FALSE;
+#endif
 
     // Tool windows should not be displayed either, these do not appear in the
     // task bar.
