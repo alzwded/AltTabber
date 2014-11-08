@@ -1,6 +1,10 @@
 // AltTabber.cpp : Defines the entry point for the application.
 //
 
+// TODO
+// * context menus to be able to close an application
+// * support for non-aero desktops (show icons instead of thumbnails)
+
 #include "stdafx.h"
 #include "AltTabber.h"
 #include <Dwmapi.h>
@@ -277,11 +281,14 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 inline BOOL IsAltTabWindow(HWND hwnd)
 {
     TITLEBARINFO ti;
-    HWND hwndTry, hwndWalk = NULL;
 
     if(!IsWindowVisible(hwnd))
         return FALSE;
 
+#if 0
+	// disable this check to get some windows like e.g.
+	// the copy file dialog to show up (even though alt-tab doesn' do this)
+    HWND hwndTry, hwndWalk = NULL;
     hwndTry = GetAncestor(hwnd, GA_ROOTOWNER);
     while(hwndTry != hwndWalk) 
     {
@@ -292,6 +299,7 @@ inline BOOL IsAltTabWindow(HWND hwnd)
     }
     if(hwndWalk != hwnd)
         return FALSE;
+#endif
 
     // the following removes some task tray programs and "Program Manager"
     ti.cbSize = sizeof(ti);
