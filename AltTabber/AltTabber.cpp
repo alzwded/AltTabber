@@ -680,7 +680,12 @@ static void QuitOverlay()
             monitorGeom.r.right + 1, monitorGeom.r.bottom,
             SWP_HIDEWINDOW);
     if(g_programState.prevActiveWindow) {
-        auto hr = SetForegroundWindow(g_programState.prevActiveWindow);
+        HWND hwnd = g_programState.prevActiveWindow;
+        if(IsIconic(hwnd)) {
+            auto hr = ShowWindow(hwnd, SW_RESTORE);
+            log(_T("restoring %p hr = %d\n"), (void*)hwnd, hr);
+        }
+        auto hr = SetForegroundWindow(hwnd);
         log(_T("set foreground window to previous result: %d\n"), hr);
     }
 }
