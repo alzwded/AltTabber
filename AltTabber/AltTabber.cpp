@@ -3,16 +3,19 @@
 
 // TODO
 // * context menus to be able to close an application
-// * support for non-aero desktops (show icons instead of thumbnails)
 
 #include "stdafx.h"
 #include "AltTabber.h"
-#include <Dwmapi.h>
+
 #include <cstdio>
+
 #include <vector>
 #include <map>
 #include <algorithm>
 #include <string>
+#include <iterator>
+
+#include <Dwmapi.h>
 #include <Windowsx.h>
 #include <sstream>
 #include <Shellapi.h>
@@ -21,11 +24,21 @@
 #define MAX_LOADSTRING 100
 
 #define MY_NOTIFICATION_ICON 2
-#define MY_NOTIFY_ICON_MESSAGE_ID (WM_USER + 1)
+#define MY_NOTIFY_ICON_MESSAGE_ID (WM_USER + 88)
+#define MY_CLOSE_BTN_ID (WM_USER + 89)
+
+typedef enum {
+	APP_THUMB_COMPAT = 0,
+	APP_THUMB_AERO,
+} app_thumb_e_t;
 
 typedef struct {
-    HTHUMBNAIL thumb;
+	app_thumb_e_t type;
     HWND hwnd;
+	union {
+		HTHUMBNAIL thumb;
+		HICON icon;
+	};
 } AppThumb_t;
 
 typedef struct {
@@ -44,7 +57,6 @@ struct {
     std::map<HMONITOR, std::vector<AppThumb_t> > thumbnails;
     std::vector<SlotThing_t> slots;
     std::wstring filter;
-    BOOL ignoreNext;
 } g_programState = {
     FALSE,
     NULL,
@@ -64,7 +76,7 @@ BOOL				InitInstance(HINSTANCE, int);
 LRESULT CALLBACK	WndProc(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK	About(HWND, UINT, WPARAM, LPARAM);
 
-inline void log(LPTSTR fmt, ...)
+static inline void log(LPTSTR fmt, ...)
 {
     if(!g_programState.logging) return;
 
@@ -196,7 +208,7 @@ BOOL CALLBACK monitorEnumProc(
     return TRUE;
 }
 
-MonitorGeom_t GetMonitorGeometry()
+static MonitorGeom_t GetMonitorGeometry()
 {
     MonitorGeom_t ret = { { MAXLONG, MAXLONG, -MAXLONG, -MAXLONG } };
     std::vector<MonitorInfo_t> stuff;
@@ -315,7 +327,7 @@ inline BOOL IsAltTabWindow(HWND hwnd)
     return TRUE;
 }
 
-BOOL GetImagePathName(HWND hwnd, std::wstring& imagePathName)
+static BOOL GetImagePathName(HWND hwnd, std::wstring& imagePathName)
 {
 	BOOL hr = 0;
     TCHAR str2[MAX_PATH + 1];
@@ -365,24 +377,44 @@ BOOL CALLBACK enumWindows(HWND hwnd, LPARAM lParam)
     HTHUMBNAIL hThumb = NULL;
     auto hr = DwmRegisterThumbnail(g_programState.hWnd, hwnd, &hThumb);
     log(_T("register thumbnail for %p on monitor %p: %d\n"), (void*)hwnd, (void*)hMonitor, hr);
-    AppThumb_t at = {
-        hThumb,
-        hwnd
-    };
-    if(hr == S_OK) g_programState.thumbnails[hMonitor].push_back(at);
+	if(hr == S_OK) {
+		AppThumb_t at = {
+			APP_THUMB_AERO,
+		    hwnd,
+		};
+		at.thumb = hThumb;
+		g_programState.thumbnails[hMonitor].push_back(at);
+	} else {
+		AppThumb_t at = {
+			APP_THUMB_COMPAT,
+			hwnd,
+		};
+		HICON hIcon = (HICON)GetClassLong(hwnd, GCL_HICON);
+		at.icon = hIcon;
+		g_programState.thumbnails[hMonitor].push_back(at);
+	}
 
     return TRUE;
 }
 
-void CreateThumbnails(std::wstring const& filter)
+static inline void PurgeThumbnails()
 {
     for(auto i = g_programState.thumbnails.begin(); i != g_programState.thumbnails.end(); ++i) {
-        for(auto j = i->second.begin(); j != i->second.end(); ++j) {
-            DwmUnregisterThumbnail(j->thumb);
-        }
+		auto thumbs = i->second;
+		decltype(thumbs) rest(thumbs.size());
+		std::remove_copy_if(thumbs.begin(), thumbs.end(), std::inserter(rest, rest.end()), [](AppThumb_t const& thumb) -> bool {
+			return thumb.type != APP_THUMB_AERO;
+		});
+		std::for_each(rest.begin(), rest.end(), [](AppThumb_t const& thumb) {
+            DwmUnregisterThumbnail(thumb.thumb);
+		});
     }
     g_programState.thumbnails.clear();
+}
 
+static inline void CreateThumbnails(std::wstring const& filter)
+{
+	PurgeThumbnails();
     auto hr = EnumWindows(enumWindows, (LPARAM)&filter);
     log(_T("enum desktop windows: %d\n"), hr);
 }
@@ -416,7 +448,7 @@ void PerformSlotting(F& functor)
     }
 }
 
-void SetThumbnails()
+static void SetThumbnails()
 {
     g_programState.activeSlot = -1;
     g_programState.slots.clear();
@@ -438,11 +470,13 @@ void SetThumbnails()
             r.top = mi.extent.top - mis.r.top + y;
             r.bottom = mi.extent.top - mis.r.top + y1;
 
-            DWM_THUMBNAIL_PROPERTIES thProps;
-            thProps.dwFlags = DWM_TNP_RECTDESTINATION | DWM_TNP_VISIBLE;
-            thProps.rcDestination = r;
-            thProps.fVisible = TRUE;
-            DwmUpdateThumbnailProperties(thumb.thumb, &thProps);
+			if(thumb.type == APP_THUMB_AERO) {
+                DWM_THUMBNAIL_PROPERTIES thProps;
+                thProps.dwFlags = DWM_TNP_RECTDESTINATION | DWM_TNP_VISIBLE;
+                thProps.rcDestination = r;
+                thProps.fVisible = TRUE;
+                DwmUpdateThumbnailProperties(thumb.thumb, &thProps);
+			}
 
             if(thumb.hwnd == g_programState.prevActiveWindow) g_programState.activeSlot = nthSlot;
 
@@ -461,19 +495,14 @@ void SetThumbnails()
 	if(g_programState.activeSlot < 0 && g_programState.slots.size() > 0) g_programState.activeSlot = 0;
 }
 
-void Cleanup()
+static inline void Cleanup()
 {
-    for(auto i = g_programState.thumbnails.begin(); i != g_programState.thumbnails.end(); ++i) {
-        for(auto j = i->second.begin(); j != i->second.end(); ++j) {
-            DwmUnregisterThumbnail(j->thumb);
-        }
-    }
-    g_programState.thumbnails.clear();
+	PurgeThumbnails();
     
     if(g_programState.freopened != NULL) fclose(g_programState.freopened);
 }
 
-void OnPaint(HDC hdc)
+static void OnPaint(HDC hdc)
 {
     HGDIOBJ original = NULL;
     original = SelectObject(hdc, GetStockObject(DC_PEN));
@@ -505,7 +534,8 @@ void OnPaint(HDC hdc)
 	int prevBkMode = SetBkMode(hdc, TRANSPARENT);
 
 	PerformSlotting([&](MonitorInfo_t& mi, size_t j, long l1, long l2, long hs, long ws) {
-            HWND hwnd = g_programState.thumbnails[mi.hMonitor][j].hwnd;
+		    AppThumb_t& thumb = g_programState.thumbnails[mi.hMonitor][j];
+            HWND hwnd = thumb.hwnd;
 			
             long x = (j % l1) * ws + 3;
             long y = (j / l1) * hs + 3;
@@ -523,6 +553,10 @@ void OnPaint(HDC hdc)
 
 			Rectangle(hdc, r.left, r.top, r.right, r.bottom);
             DrawText(hdc, str, -1, &r, DT_BOTTOM | DT_LEFT | DT_WORDBREAK);
+
+			if(thumb.type == APP_THUMB_COMPAT) {
+				DrawIcon(hdc, r.left + 3, r.bottom + 3, thumb.icon);
+			}
 	});
 
 	SetBkMode(hdc, prevBkMode);
@@ -531,7 +565,7 @@ void OnPaint(HDC hdc)
     SelectObject(hdc, original);
 }
 
-void MoveNext(DWORD direction)
+static void MoveNext(DWORD direction)
 {
     if(g_programState.activeSlot < 0) {
         if(g_programState.slots.size() > 0) {
@@ -569,7 +603,7 @@ void MoveNext(DWORD direction)
     RedrawWindow(g_programState.hWnd, NULL, NULL, RDW_INVALIDATE);
 }
 
-void QuitOverlay()
+static void QuitOverlay()
 {
     log(_T("escape pressed; reverting\n"));
     g_programState.showing = FALSE;
@@ -581,7 +615,7 @@ void QuitOverlay()
     }
 }
 
-void SelectCurrent()
+static inline void SelectCurrent()
 {
     if(g_programState.activeSlot >= 0) {
         g_programState.prevActiveWindow = g_programState.slots[g_programState.activeSlot].hwnd;
@@ -589,7 +623,7 @@ void SelectCurrent()
     }
 }
 
-void SelectByMouse(DWORD lParam)
+static void SelectByMouse(DWORD lParam)
 {
     int xPos = GET_X_LPARAM(lParam);
     int yPos = GET_Y_LPARAM(lParam);
@@ -603,23 +637,36 @@ void SelectByMouse(DWORD lParam)
     }
 }
 
-void ActivateSwitcher()
+static void ActivateSwitcher()
 {
-            log(_T("activating switcher\n"));
-            g_programState.prevActiveWindow = GetForegroundWindow();
-            log(_T("previous window is %p\n"), (void*)g_programState.prevActiveWindow);
-            g_programState.showing = TRUE;
-            auto monitorGeom = GetMonitorGeometry();
-            SetWindowPos(g_programState.hWnd, HWND_TOPMOST, monitorGeom.r.left, monitorGeom.r.top, monitorGeom.r.right - monitorGeom.r.left, monitorGeom.r.bottom - monitorGeom.r.top, SWP_SHOWWINDOW);
-            //SetWindowPos(hWnd, HWND_TOPMOST, monitorGeom.r.left, monitorGeom.r.top, monitorGeom.r.right - monitorGeom.r.left, 100, SWP_SHOWWINDOW);
-            SetForegroundWindow(g_programState.hWnd);
-            SetFocus(g_programState.hWnd);
+    log(_T("activating switcher\n"));
+    g_programState.prevActiveWindow = GetForegroundWindow();
+    log(_T("previous window is %p\n"), (void*)g_programState.prevActiveWindow);
+    g_programState.showing = TRUE;
+    auto monitorGeom = GetMonitorGeometry();
+    SetWindowPos(g_programState.hWnd, HWND_TOPMOST, monitorGeom.r.left, monitorGeom.r.top, monitorGeom.r.right - monitorGeom.r.left, monitorGeom.r.bottom - monitorGeom.r.top, SWP_SHOWWINDOW);
+    //SetWindowPos(hWnd, HWND_TOPMOST, monitorGeom.r.left, monitorGeom.r.top, monitorGeom.r.right - monitorGeom.r.left, 100, SWP_SHOWWINDOW);
+    SetForegroundWindow(g_programState.hWnd);
+    SetFocus(g_programState.hWnd);
 
-            g_programState.filter = _T("");
-            CreateThumbnails(g_programState.filter);
-            SetThumbnails();
+    g_programState.filter = _T("");
+    CreateThumbnails(g_programState.filter);
+    SetThumbnails();
+}
 
-            g_programState.ignoreNext = TRUE;
+static void ShowContextMenu(int x, int y)
+{	
+	if(g_programState.activeSlot >= 0
+		&& (unsigned long)g_programState.activeSlot < g_programState.slots.size())
+	{
+		HMENU ctxMenu = CreatePopupMenu();
+		AppendMenu(ctxMenu, MF_STRING, MY_CLOSE_BTN_ID, _T("Close"));
+		auto hr = TrackPopupMenu(ctxMenu, 
+			TPM_RIGHTBUTTON,
+			x, y,
+			0, g_programState.hWnd, NULL);
+		DestroyMenu(ctxMenu);
+	}
 }
 
 //
@@ -660,6 +707,22 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		case IDM_EXIT:
 			DestroyWindow(hWnd);
 			break;
+		case MY_CLOSE_BTN_ID:
+			if(g_programState.activeSlot >= 0) {
+				auto& slot = g_programState.slots[g_programState.activeSlot];
+				PostMessage(slot.hwnd, WM_SYSCOMMAND, SC_CLOSE, -1);
+				// clear the filter because of use case
+				if(g_programState.slots.size() <= 2) {
+					g_programState.filter = L"";
+				}
+				// rebuild thumbnails because filter was changed
+				// and there are maybe dangling slots
+				CreateThumbnails(g_programState.filter);
+				SetThumbnails();
+				// force redraw window (the labels)
+				RedrawWindow(hWnd, NULL, NULL, RDW_INVALIDATE);
+			}
+			break;
 		default:
 			return DefWindowProc(hWnd, message, wParam, lParam);
 		}
@@ -687,6 +750,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		PostQuitMessage(0);
 		break;
     case WM_HOTKEY:
+		// only waiting for one, so skip over trying to decode it
+		// even if multiple keys are registered as hotkeys, they'd
+		// all do the same thing anyway
         log(_T("hotkey pressed\n"));
         if(g_programState.showing) {
             SelectCurrent();
@@ -699,8 +765,12 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         if(amount > 0) MoveNext(VK_LEFT);
         else MoveNext(VK_RIGHT);
         break; }
-    case WM_LBUTTONDOWN:
-    case WM_RBUTTONDOWN:
+    case WM_RBUTTONUP:
+        if(!g_programState.showing) break;
+        SelectByMouse(lParam);
+		ShowContextMenu(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
+        break;
+    case WM_LBUTTONUP:
         if(!g_programState.showing) break;
         SelectByMouse(lParam);
         break;
@@ -710,12 +780,14 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         SelectByMouse(lParam);
         SelectCurrent();
         break;
-    case WM_KEYUP:
-        if(g_programState.ignoreNext) {
-            g_programState.ignoreNext = false;
-            break;
-        }
+    case WM_KEYDOWN:
         switch(wParam) {
+		case VK_APPS: // menu key
+			if(g_programState.activeSlot >= 0) {
+				RECT r = g_programState.slots[g_programState.activeSlot].r;
+				ShowContextMenu(r.left, r.top);
+			}
+			break;
         case VK_ESCAPE:
             QuitOverlay();
             break;
