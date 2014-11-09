@@ -21,7 +21,7 @@ Changing the hotkey
 
 The hotkey can be changed from `Ctrl`-`Alt`-`3` by going in the registry under `HKEY_CURRENT_USER\Software\jakkal\AltTabber` and modifying the `modifiers` and `key` values.
 
-The `modifiers` value is a combination of [the values described for fsModifeirs here](http://msdn.microsoft.com/en-us/library/windows/desktop/ms646309.aspx) things.
+The `modifiers` value is a combination of [the values described for fsModifiers here](http://msdn.microsoft.com/en-us/library/windows/desktop/ms646309.aspx) things.
 
 The `key` value is one of [these](http://msdn.microsoft.com/en-us/library/windows/desktop/dd375731.aspx) things.
 
