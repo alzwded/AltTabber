@@ -26,7 +26,7 @@ void SynchronizeWithRegistry()
     }
 
     struct x_SynchronizeWithRegistry_OnExit {
-        HKEY m_hk;
+        HKEY& m_hk;
         x_SynchronizeWithRegistry_OnExit(HKEY& hk)
             : m_hk(hk)
         {}
