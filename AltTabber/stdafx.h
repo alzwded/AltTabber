@@ -31,3 +31,9 @@
 #include <sstream>
 #include <Shellapi.h>
 #include <Psapi.h>
+
+#include <dwmapi.h>
+
+#include <vector>
+#include <map>
+#include <string>

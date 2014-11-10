@@ -1,12 +1,7 @@
 #pragma once
 
+#include "stdafx.h"
 #include "resource.h"
-
-#include <dwmapi.h>
-
-#include <vector>
-#include <map>
-#include <string>
 
 typedef enum {
     APP_THUMB_COMPAT = 0,
