@@ -19,3 +19,15 @@
 
 
 // TODO: reference additional headers your program requires here
+
+
+#include <cstdio>
+
+#include <algorithm>
+#include <iterator>
+
+#include <Dwmapi.h>
+#include <Windowsx.h>
+#include <sstream>
+#include <Shellapi.h>
+#include <Psapi.h>

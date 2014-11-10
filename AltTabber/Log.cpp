@@ -1,17 +1,6 @@
 #include "stdafx.h"
 #include "AltTabber.h"
 
-#include <cstdio>
-
-#include <algorithm>
-#include <iterator>
-
-#include <Dwmapi.h>
-#include <Windowsx.h>
-#include <sstream>
-#include <Shellapi.h>
-#include <Psapi.h>
-
 extern ProgramState_t g_programState;
 
 void log(LPTSTR fmt, ...)

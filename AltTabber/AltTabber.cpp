@@ -4,17 +4,6 @@
 #include "stdafx.h"
 #include "AltTabber.h"
 
-#include <cstdio>
-
-#include <algorithm>
-#include <iterator>
-
-#include <Dwmapi.h>
-#include <Windowsx.h>
-#include <sstream>
-#include <Shellapi.h>
-#include <Psapi.h>
-
 #define MAX_LOADSTRING 100
 
 #define MY_NOTIFICATION_ICON 2
