@@ -1,18 +1,12 @@
 // AltTabber.cpp : Defines the entry point for the application.
 //
 
-// TODO
-// * context menus to be able to close an application
-
 #include "stdafx.h"
 #include "AltTabber.h"
 
 #include <cstdio>
 
-#include <vector>
-#include <map>
 #include <algorithm>
-#include <string>
 #include <iterator>
 
 #include <Dwmapi.h>
@@ -27,42 +21,16 @@
 #define MY_NOTIFY_ICON_MESSAGE_ID (WM_USER + 88)
 #define MY_CLOSE_BTN_ID (WM_USER + 89)
 
-typedef enum {
-    APP_THUMB_COMPAT = 0,
-    APP_THUMB_AERO,
-} app_thumb_e_t;
+extern void log(LPTSTR fmt, ...);
+extern MonitorGeom_t GetMonitorGeometry();
+extern void SynchronizeWithRegistry();
+extern void ActivateSwitcher();
+extern void SelectCurrent();
+extern void MoveNext(DWORD);
+extern void SelectByMouse(DWORD);
+extern void QuitOverlay();
 
-typedef struct {
-    app_thumb_e_t type;
-    HWND hwnd;
-    union {
-        HTHUMBNAIL thumb;
-        HICON icon;
-    };
-} AppThumb_t;
-
-typedef struct {
-    HWND hwnd;
-    RECT r;
-    int moveUpDownAmount;
-} SlotThing_t;
-
-struct {
-    BOOL showing;
-    HWND prevActiveWindow;
-    signed long activeSlot;
-    BOOL logging;
-    FILE* freopened;
-    struct {
-        UINT modifiers;
-        UINT key;
-    } hotkey;
-
-    HWND hWnd;
-    std::map<HMONITOR, std::vector<AppThumb_t> > thumbnails;
-    std::vector<SlotThing_t> slots;
-    std::wstring filter;
-} g_programState = {
+ProgramState_t g_programState = {
     FALSE,
     NULL,
     -1,
@@ -82,39 +50,6 @@ BOOL                InitInstance(HINSTANCE, int);
 LRESULT CALLBACK    WndProc(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK    About(HWND, UINT, WPARAM, LPARAM);
 
-static inline void log(LPTSTR fmt, ...)
-{
-    if(!g_programState.logging) return;
-
-    if(!g_programState.freopened) {
-        // replace stdout with log file
-        TCHAR tempPath[MAX_PATH + 1];
-        auto hr = GetTempPath(MAX_PATH, tempPath);
-        if(hr == 0) abort();
-
-        TCHAR tempFile[MAX_PATH + 1];
-        UINT hrTFN = GetTempFileName(
-                tempPath,
-                _T("altTabber"),
-                0,
-                tempFile);
-        if(hrTFN == 0 || hrTFN == ERROR_BUFFER_OVERFLOW) abort();
-
-        _tfreopen_s(
-                &g_programState.freopened,
-                tempFile,
-                _T("w"),
-                stdout);
-    }
-
-    va_list ap;
-    va_start(ap, fmt);
-
-    _vwprintf_p(fmt, ap);
-    fflush(stdout);
-
-    va_end(ap);
-}
 
 int APIENTRY _tWinMain(HINSTANCE hInstance,
                      HINSTANCE hPrevInstance,
@@ -188,170 +123,6 @@ ATOM MyRegisterClass(HINSTANCE hInstance)
     wcex.hIconSm        = LoadIcon(wcex.hInstance, MAKEINTRESOURCE(IDI_SMALL));
 
     return RegisterClassEx(&wcex);
-}
-
-typedef struct {
-    HMONITOR hMonitor;
-    RECT extent;
-} MonitorInfo_t;
-
-typedef struct {
-    RECT r;
-    std::vector<MonitorInfo_t> monitors;
-} MonitorGeom_t;
-
-BOOL CALLBACK monitorEnumProc(
-    HMONITOR hMonitor,
-    HDC hdcMonitor,
-    LPRECT lprcMonitor,
-    LPARAM dwData)
-{
-    MONITORINFO mi;
-    mi.cbSize = sizeof(MONITORINFO);
-    mi.dwFlags = 0;
-    auto hr = GetMonitorInfo(hMonitor, &mi);
-    log(
-            _T("Get monitor info: %d; %ld %ld %ld %ld\n"),
-            hr,
-            mi.rcMonitor.left, mi.rcMonitor.top,
-            mi.rcMonitor.right, mi.rcMonitor.bottom);
-    if(!hr) {
-        log(_T("\tlast error: %d\n"), GetLastError());
-    }
-
-    MonitorInfo_t mit = { hMonitor, mi.rcMonitor };
-
-    std::vector<MonitorInfo_t>& stuff =
-        *((std::vector<MonitorInfo_t>*)dwData);
-    stuff.push_back(mit);
-    return TRUE;
-}
-
-static MonitorGeom_t GetMonitorGeometry()
-{
-    MonitorGeom_t ret = { { MAXLONG, MAXLONG, -MAXLONG, -MAXLONG } };
-    std::vector<MonitorInfo_t> stuff;
-
-    EnumDisplayMonitors(NULL, NULL, monitorEnumProc, (LPARAM)&stuff);
-
-    ret.monitors = stuff;
-
-    for(auto&& i = stuff.begin(); i != stuff.end(); ++i) {
-        if(i->extent.left < ret.r.left) ret.r.left = i->extent.left;
-        if(i->extent.top < ret.r.top) ret.r.top = i->extent.top;
-        if(i->extent.right > ret.r.right) ret.r.right = i->extent.right;
-        if(i->extent.bottom > ret.r.bottom) ret.r.bottom = i->extent.bottom;
-    }
-
-    std::sort(
-            ret.monitors.begin(), ret.monitors.end(),
-            [](
-                std::vector<MonitorInfo_t>::value_type const& left,
-                std::vector<MonitorInfo_t>::value_type const& right)
-            -> bool {
-                if(left.extent.top == right.extent.top) {
-                    return left.extent.left < right.extent.left;
-                }
-                return left.extent.top < right.extent.top;
-            });
-
-    return ret;
-}
-
-
-static void MoveCursorOverActiveSlot()
-{
-    if(g_programState.activeSlot < 0) return;
-
-    auto& r = g_programState.slots[g_programState.activeSlot].r;
-    POINT moveHere = {
-        (r.right + r.left) / 2,
-        (r.bottom + r.top) / 2,
-    };
-    ClientToScreen(g_programState.hWnd, &moveHere);
-    SetCursorPos(moveHere.x, moveHere.y);
-}
-
-void SynchronizeWithRegistry()
-{
-#define SUBKEY (_T("Software\\jakkal\\AltTabber"))
-    HKEY phk = NULL;
-    DWORD disposition = 0;
-    auto hr = RegCreateKeyEx(HKEY_CURRENT_USER,
-        SUBKEY,
-        0, 
-        NULL,
-        0,
-        KEY_READ | KEY_QUERY_VALUE | KEY_SET_VALUE | KEY_WRITE,
-        NULL,
-        &phk,
-        &disposition);
-
-    if(hr != ERROR_SUCCESS) {
-        log(_T("RegCreateKey failed %d: errno: %d\n"), hr, GetLastError());
-        return;
-    }
-    
-    DWORD dModifiers = (DWORD)g_programState.hotkey.modifiers;
-    DWORD dKey = (DWORD)g_programState.hotkey.key;
-    DWORD dSize = sizeof(DWORD);
-
-    switch(disposition) {
-    case REG_CREATED_NEW_KEY: {
-        // set default values
-        hr = RegSetValueEx(phk,
-            _T("modifiers"),
-            0,
-            REG_DWORD,
-            (BYTE*)&dModifiers,
-            sizeof(DWORD));
-        if(hr != ERROR_SUCCESS) {
-            log(_T("RegSetValue failed %d: errno %d\n"), hr, GetLastError());
-            goto finished;
-        }
-        hr = RegSetValueEx(phk,
-            _T("key"),
-            0,
-            REG_DWORD,
-            (BYTE*)&dKey,
-            sizeof(DWORD));
-        if(hr != ERROR_SUCCESS) {
-            log(_T("RegSetValue failed %d: errno %d\n"), hr, GetLastError());
-            goto finished;
-        }
-        break; }
-    case REG_OPENED_EXISTING_KEY:
-        // read values
-        dSize = sizeof(DWORD);
-        hr = RegQueryValueEx(phk,
-            _T("modifiers"),
-            0,
-            NULL,
-            (BYTE*)&dModifiers,
-            &dSize);
-        if(hr != ERROR_SUCCESS) {
-            log(_T("RegQueryValue failed %d: errno %d\n"), hr, GetLastError());
-            goto finished;
-        }
-        dSize = sizeof(DWORD);
-        hr = RegQueryValueEx(phk,
-            _T("key"),
-            0,
-            NULL,
-            (BYTE*)&dKey,
-            &dSize);
-        if(hr != ERROR_SUCCESS) {
-            log(_T("RegQueryValue failed %d: errno %d\n"), hr, GetLastError());
-            goto finished;
-        }
-
-        g_programState.hotkey.modifiers = (UINT)(ULONG)dModifiers;
-        g_programState.hotkey.key = (UINT)(ULONG)dKey;
-        break;
-    }
-
-finished:
-    RegCloseKey(phk);
 }
 
 //
@@ -560,7 +331,7 @@ static inline void PurgeThumbnails()
     g_programState.thumbnails.clear();
 }
 
-static inline void CreateThumbnails(std::wstring const& filter)
+void CreateThumbnails(std::wstring const& filter)
 {
     PurgeThumbnails();
     auto hr = EnumWindows(enumWindows, (LPARAM)&filter);
@@ -596,7 +367,7 @@ void PerformSlotting(F& functor)
     }
 }
 
-static void SetThumbnails()
+void SetThumbnails()
 {
     g_programState.activeSlot = -1;
     g_programState.slots.clear();
@@ -732,249 +503,6 @@ static void OnPaint(HDC hdc)
     SelectObject(hdc, originalFont);
     SelectObject(hdc, originalBrush);
     SelectObject(hdc, original);
-}
-
-static void MoveNextGeographically(POINT p)
-{
-    if(g_programState.activeSlot < 0) {
-        log(_T("no active slot"));
-        return;
-    }
-
-    auto& slots = g_programState.slots;
-    SlotThing_t& slot = slots[g_programState.activeSlot];
-    RECT& r = slot.r;
-    log(_T("moving away from %ld %ld %ld %ld\n"),
-        r.left, r.top, r.right, r.bottom);
-    POINT speculant = {
-            p.x * 5
-            + (p.x > 0) * r.right
-            + (p.x < 0) * r.left
-            + (!p.x) * ( (r.left + r.right) / 2)
-        ,
-            p.y * 5
-            + (p.y > 0) * r.bottom
-            + (p.y < 0) * r.top
-            + (!p.y) * ( (r.top + r.bottom) / 2l)
-        ,
-    };
-
-    auto found = std::find_if(slots.begin(), slots.end(),
-        [&speculant](SlotThing_t& s) -> bool {
-            return PtInRect(&s.r, speculant) != FALSE;
-        });
-
-    if(found != slots.end()) {
-        g_programState.activeSlot = found - slots.begin();
-        return;
-    }
-    /* else */
-    log(_T("could not find a slot speculating at %ld %ld, trying wrap around\n"),
-        speculant.x, speculant.y);
-    RECT wr;
-    (void) GetWindowRect(g_programState.hWnd, &wr);
-    speculant.x = 
-            p.x * 5
-            + (p.x > 0) * 0
-            + (p.x < 0) * (wr.right - wr.left)
-            + (!p.x) * ( (r.left + r.right) / 2)
-        ;
-    speculant.y =
-            p.y * 5
-            + (p.y > 0) * 0
-            + (p.y < 0) * (wr.bottom - wr.top)
-            + (!p.y) * ( (r.top + r.bottom) / 2l)
-        ;
-    
-    auto found2 = std::find_if(slots.begin(), slots.end(),
-        [&speculant](SlotThing_t& s) -> bool {
-            return PtInRect(&s.r, speculant) != FALSE;
-        });
-    
-    if(found2 != slots.end()) {
-        g_programState.activeSlot = found2 - slots.begin();
-        return;
-    }
-    
-    log(_T("could not find a slot speculating at %ld %ld, silently failing\n"),
-        speculant.x, speculant.y);
-}
-
-static void MoveNext(DWORD direction)
-{
-    if(g_programState.activeSlot < 0) {
-        if(g_programState.slots.size() > 0) {
-            g_programState.activeSlot = g_programState.slots.size() - 1;
-        } else {
-            return;
-        }
-    }
-    log(_T("Moving from %ld "), g_programState.activeSlot);
-    POINT p = { 0, 0 };
-    switch(direction)
-    {
-        case VK_TAB:
-            g_programState.activeSlot++;
-            log(_T("by %d\n"), 1);
-            break;
-        case VK_BACK:
-            g_programState.activeSlot--;
-            log(_T("by %d\n"), -1);
-            break;
-        case VK_LEFT:
-            p.x = -1;
-            MoveNextGeographically(p);
-            break;
-        case VK_RIGHT:
-            p.x = 1;
-            MoveNextGeographically(p);
-            break;
-        case VK_UP:
-            p.y = -1;
-            MoveNextGeographically(p);
-            break;
-        case VK_DOWN:
-            p.y = 1;
-            MoveNextGeographically(p);
-            break;
-    }
-    if(g_programState.activeSlot < 0) {
-        g_programState.activeSlot =
-            g_programState.slots.size() + g_programState.activeSlot;
-    }
-    g_programState.activeSlot %= g_programState.slots.size();
-
-    if(g_programState.activeSlot >= 0) {
-        log(_T("Current active slot: %ld hwnd: %p\n"),
-                g_programState.activeSlot,
-                (void*)g_programState.slots[g_programState.activeSlot].hwnd);
-    }
-
-    MoveCursorOverActiveSlot();
-
-    RedrawWindow(g_programState.hWnd, NULL, NULL, RDW_INVALIDATE);
-}
-
-static void QuitOverlay()
-{
-    log(_T("escape pressed; reverting\n"));
-    g_programState.showing = FALSE;
-    auto monitorGeom = GetMonitorGeometry();
-    SetWindowPos(g_programState.hWnd,
-            0,
-            0, 0,
-            0, 0,
-            SWP_HIDEWINDOW | SWP_NOSIZE | SWP_NOZORDER | SWP_NOSENDCHANGING);
-    if(g_programState.prevActiveWindow) {
-        HWND hwnd = g_programState.prevActiveWindow;
-        auto hr = SetForegroundWindow(hwnd);
-        log(_T("set foreground window to previous result: %d\n"), hr);
-        if(IsIconic(hwnd)) {
-            auto hr = ShowWindow(hwnd, SW_RESTORE);
-            log(_T("restoring %p hr = %d\n"), (void*)hwnd, hr);
-        }
-
-        // I don't really need to do this since windows seem to sometimes do
-        // it automatically, but it's curtosy (or however you spell it)
-        
-        RECT r;
-        BOOL hrGWR = GetWindowRect(hwnd, &r);
-        POINT p;
-        BOOL hrGCP = GetCursorPos(&p);
-
-        auto& mis = monitorGeom;
-        if(hrGWR != FALSE && hrGCP != FALSE && !PtInRect(&r, p)) {
-            POINT tentativePoint = {
-                (r.right + r.left) / 2,
-                (r.bottom + r.top) / 2,
-            };
-            auto found = std::find_if(mis.monitors.begin(), mis.monitors.end(),
-                [&tentativePoint](MonitorInfo_t& mon) -> bool {
-                    return PtInRect(&mon.extent, tentativePoint) != FALSE;
-                });
-            if(found != mis.monitors.end()) {
-                log(_T("Moving the mouse centered on the window\n"));
-                SetCursorPos(tentativePoint.x, tentativePoint.y);
-            } else {
-                auto hMonitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
-                MONITORINFO mi;
-                mi.cbSize = sizeof(MONITORINFO);
-                mi.dwFlags = 0;
-                GetMonitorInfo(hMonitor, &mi);
-                
-                RECT newTarget;
-                BOOL hrIR = IntersectRect(&newTarget, &mi.rcWork, &r);
-
-                if(hrIR) {
-                    log(_T("Moving the mouse centered on the intersection of the window and the monitor it's on\n"));
-                    SetCursorPos(
-                        (newTarget.left + newTarget.right) / 2,
-                        (newTarget.top + newTarget.bottom) / 2);
-                } else {
-                    log(_T("Moving the mouse centered on the monitor it's on\n"));
-                    SetCursorPos(
-                        (mi.rcWork.left + mi.rcWork.right) / 2,
-                        (mi.rcWork.top + mi.rcWork.bottom) / 2);
-                }
-            }
-        }
-    }
-}
-
-static inline void SelectCurrent()
-{
-    if(g_programState.activeSlot >= 0) {
-        g_programState.prevActiveWindow =
-            g_programState.slots[g_programState.activeSlot]
-            .hwnd;
-        QuitOverlay();
-    }
-}
-
-static void SelectByMouse(DWORD lParam)
-{
-    int xPos = GET_X_LPARAM(lParam);
-    int yPos = GET_Y_LPARAM(lParam);
-    POINT pt = { xPos, yPos };
-    auto found = std::find_if(
-            g_programState.slots.begin(), g_programState.slots.end(),
-            [&](SlotThing_t const& thing) -> BOOL {
-                return PtInRect(&thing.r, pt);
-            });
-    if(found != g_programState.slots.end()) {
-        g_programState.activeSlot = found - g_programState.slots.begin();
-        RedrawWindow(g_programState.hWnd, NULL, NULL, RDW_INVALIDATE);
-    }
-}
-
-static void ActivateSwitcher()
-{
-    log(_T("activating switcher\n"));
-    g_programState.prevActiveWindow = GetForegroundWindow();
-    log(_T("previous window is %p\n"),
-            (void*)g_programState.prevActiveWindow);
-    g_programState.showing = TRUE;
-    auto monitorGeom = GetMonitorGeometry();
-    SetForegroundWindow(g_programState.hWnd);
-    SetFocus(g_programState.hWnd);
-    auto hrSWP = SetWindowPos(g_programState.hWnd,
-            NULL,
-            0, 0,
-            0, 0,
-            SWP_SHOWWINDOW | SWP_NOSENDCHANGING);
-    log(_T("SetWindowPos returned %d: errno %d\n"), hrSWP, GetLastError());
-    hrSWP = SetWindowPos(g_programState.hWnd,
-            HWND_TOPMOST,
-            monitorGeom.r.left, monitorGeom.r.top,
-            monitorGeom.r.right - monitorGeom.r.left, monitorGeom.r.bottom - monitorGeom.r.top,
-            SWP_NOSENDCHANGING);
-    log(_T("SetWindowPos returned %d: errno %d\n"), hrSWP, GetLastError());
-
-    g_programState.filter = _T("");
-    CreateThumbnails(g_programState.filter);
-    SetThumbnails();
-
-    MoveCursorOverActiveSlot();
 }
 
 static void ShowContextMenu(int x, int y)
