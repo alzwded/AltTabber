@@ -24,6 +24,16 @@ void SynchronizeWithRegistry()
         log(_T("RegCreateKey failed %d: errno: %d\n"), hr, GetLastError());
         return;
     }
+
+    struct x_SynchronizeWithRegistry_OnExit {
+        HKEY m_hk;
+        x_SynchronizeWithRegistry_OnExit(HKEY& hk)
+            : m_hk(hk)
+        {}
+        ~x_SynchronizeWithRegistry_OnExit() {
+            RegCloseKey(m_hk);
+        }
+    } witness(phk);
     
     DWORD dModifiers = (DWORD)g_programState.hotkey.modifiers;
     DWORD dKey = (DWORD)g_programState.hotkey.key;
@@ -40,7 +50,7 @@ void SynchronizeWithRegistry()
             sizeof(DWORD));
         if(hr != ERROR_SUCCESS) {
             log(_T("RegSetValue failed %d: errno %d\n"), hr, GetLastError());
-            goto finished;
+            return;
         }
         hr = RegSetValueEx(phk,
             _T("key"),
@@ -50,7 +60,7 @@ void SynchronizeWithRegistry()
             sizeof(DWORD));
         if(hr != ERROR_SUCCESS) {
             log(_T("RegSetValue failed %d: errno %d\n"), hr, GetLastError());
-            goto finished;
+            return;
         }
         break; }
     case REG_OPENED_EXISTING_KEY:
@@ -64,7 +74,7 @@ void SynchronizeWithRegistry()
             &dSize);
         if(hr != ERROR_SUCCESS) {
             log(_T("RegQueryValue failed %d: errno %d\n"), hr, GetLastError());
-            goto finished;
+            return;
         }
         dSize = sizeof(DWORD);
         hr = RegQueryValueEx(phk,
@@ -75,14 +85,11 @@ void SynchronizeWithRegistry()
             &dSize);
         if(hr != ERROR_SUCCESS) {
             log(_T("RegQueryValue failed %d: errno %d\n"), hr, GetLastError());
-            goto finished;
+            return;
         }
 
         g_programState.hotkey.modifiers = (UINT)(ULONG)dModifiers;
         g_programState.hotkey.key = (UINT)(ULONG)dKey;
         break;
     }
-
-finished:
-    RegCloseKey(phk);
 }
