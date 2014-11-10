@@ -829,10 +829,16 @@ static void ActivateSwitcher()
     SetForegroundWindow(g_programState.hWnd);
     SetFocus(g_programState.hWnd);
     auto hrSWP = SetWindowPos(g_programState.hWnd,
+            NULL,
+            0, 0,
+            0, 0,
+            SWP_SHOWWINDOW | SWP_NOSENDCHANGING);
+    log(_T("SetWindowPos returned %d: errno %d\n"), hrSWP, GetLastError());
+    hrSWP = SetWindowPos(g_programState.hWnd,
             HWND_TOPMOST,
             monitorGeom.r.left, monitorGeom.r.top,
             monitorGeom.r.right - monitorGeom.r.left, monitorGeom.r.bottom - monitorGeom.r.top,
-            SWP_SHOWWINDOW | SWP_NOSENDCHANGING);
+            SWP_NOSENDCHANGING);
     log(_T("SetWindowPos returned %d: errno %d\n"), hrSWP, GetLastError());
 
     g_programState.filter = _T("");
