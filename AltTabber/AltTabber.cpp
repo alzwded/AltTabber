@@ -364,8 +364,8 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
             szWindowClass,
             szTitle, 
             WS_POPUP,
-            CW_USEDEFAULT, CW_USEDEFAULT,
-            400, 400,
+            geom.r.left, geom.r.top,
+            geom.r.right - geom.r.left, geom.r.bottom - geom.r.top,
             NULL,
             NULL,
             hInstance,
@@ -659,7 +659,14 @@ static void OnPaint(HDC hdc)
     
     auto mis = GetMonitorGeometry();
     SetDCBrushColor(hdc, RGB(0, 0, 0));
-    Rectangle(hdc, 0, 0, mis.r.right - mis.r.left, mis.r.bottom - mis.r.top);
+    log(_T("rectangle is %ld %ld %ld %ld\n"), mis.r.left, mis.r.top, mis.r.right, mis.r.bottom);
+    //auto hrRectangle = Rectangle(hdc, 0, 0, mis.r.right - mis.r.left, mis.r.bottom - mis.r.top);
+    //log(_T("rectangle returned %d: errno %d\n"), hrRectangle, GetLastError());
+    RECT winRect;
+    GetWindowRect(g_programState.hWnd, &winRect);
+    log(_T("window rect %ld %ld %ld %ld\n"), winRect.left, winRect.top, winRect.right, winRect.bottom);
+    auto hrRectangle = Rectangle(hdc, 0, 0, winRect.right - winRect.left, winRect.bottom - winRect.top);
+    log(_T("rectangle returned %d: errno %d\n"), hrRectangle, GetLastError());
 
     SetDCBrushColor(hdc, RGB(255, 0, 0));
 
@@ -695,6 +702,10 @@ static void OnPaint(HDC hdc)
             std::wstring title(str);
 
             Rectangle(hdc, r.left, r.top, r.right, r.bottom);
+            r.left += 3;
+            r.right -= 3;
+            r.top += 3;
+            r.bottom -= 3;
             DrawText(hdc, str, -1, &r, DT_BOTTOM | DT_LEFT | DT_WORDBREAK);
 
             if(thumb.type == APP_THUMB_COMPAT) {
@@ -702,6 +713,7 @@ static void OnPaint(HDC hdc)
             }
     });
 
+    DeleteObject(font);
     SetBkMode(hdc, prevBkMode);
     SelectObject(hdc, originalFont);
     SelectObject(hdc, originalBrush);
@@ -765,18 +777,18 @@ static void QuitOverlay()
     g_programState.showing = FALSE;
     auto monitorGeom = GetMonitorGeometry();
     SetWindowPos(g_programState.hWnd,
-            HWND_TOPMOST,
-            monitorGeom.r.right, monitorGeom.r.top,
-            monitorGeom.r.right + 1, monitorGeom.r.bottom,
-            SWP_HIDEWINDOW);
+            0,
+            0, 0,
+            0, 0,
+            SWP_HIDEWINDOW | SWP_NOSIZE | SWP_NOZORDER | SWP_NOSENDCHANGING);
     if(g_programState.prevActiveWindow) {
         HWND hwnd = g_programState.prevActiveWindow;
+        auto hr = SetForegroundWindow(hwnd);
+        log(_T("set foreground window to previous result: %d\n"), hr);
         if(IsIconic(hwnd)) {
             auto hr = ShowWindow(hwnd, SW_RESTORE);
             log(_T("restoring %p hr = %d\n"), (void*)hwnd, hr);
         }
-        auto hr = SetForegroundWindow(hwnd);
-        log(_T("set foreground window to previous result: %d\n"), hr);
     }
 }
 
@@ -814,13 +826,14 @@ static void ActivateSwitcher()
             (void*)g_programState.prevActiveWindow);
     g_programState.showing = TRUE;
     auto monitorGeom = GetMonitorGeometry();
-    SetWindowPos(g_programState.hWnd,
+    SetForegroundWindow(g_programState.hWnd);
+    SetFocus(g_programState.hWnd);
+    auto hrSWP = SetWindowPos(g_programState.hWnd,
             HWND_TOPMOST,
             monitorGeom.r.left, monitorGeom.r.top,
             monitorGeom.r.right - monitorGeom.r.left, monitorGeom.r.bottom - monitorGeom.r.top,
-            SWP_SHOWWINDOW);
-    SetForegroundWindow(g_programState.hWnd);
-    SetFocus(g_programState.hWnd);
+            SWP_SHOWWINDOW | SWP_NOSENDCHANGING);
+    log(_T("SetWindowPos returned %d: errno %d\n"), hrSWP, GetLastError());
 
     g_programState.filter = _T("");
     CreateThumbnails(g_programState.filter);
@@ -941,7 +954,11 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     case WM_RBUTTONUP:
         if(!g_programState.showing) break;
         SelectByMouse(lParam);
-        ShowContextMenu(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
+        {
+            POINT p = { GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) };
+            ClientToScreen(g_programState.hWnd, &p);
+            ShowContextMenu(p.x, p.y);
+        }
         break;
     case WM_LBUTTONUP:
         if(!g_programState.showing) break;
