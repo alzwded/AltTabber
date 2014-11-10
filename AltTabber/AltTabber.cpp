@@ -720,6 +720,72 @@ static void OnPaint(HDC hdc)
     SelectObject(hdc, original);
 }
 
+static void MoveNextGeographically(POINT p)
+{
+    if(g_programState.activeSlot < 0) {
+        log(_T("no active slot"));
+        return;
+    }
+
+    auto& slots = g_programState.slots;
+    SlotThing_t& slot = slots[g_programState.activeSlot];
+    RECT& r = slot.r;
+    log(_T("moving away from %ld %ld %ld %ld\n"),
+        r.left, r.top, r.right, r.bottom);
+    POINT speculant = {
+            p.x * 5
+            + (p.x > 0) * r.right
+            + (p.x < 0) * r.left
+            + (!p.x) * ( (r.left + r.right) / 2)
+        ,
+            p.y * 5
+            + (p.y > 0) * r.bottom
+            + (p.y < 0) * r.top
+            + (!p.y) * ( (r.top + r.bottom) / 2l)
+        ,
+    };
+
+    auto found = std::find_if(slots.begin(), slots.end(),
+        [&speculant](SlotThing_t& s) -> bool {
+            return PtInRect(&s.r, speculant) != FALSE;
+        });
+
+    if(found != slots.end()) {
+        g_programState.activeSlot = found - slots.begin();
+        return;
+    }
+    /* else */
+    log(_T("could not find a slot speculating at %ld %ld, trying wrap around\n"),
+        speculant.x, speculant.y);
+    RECT wr;
+    (void) GetWindowRect(g_programState.hWnd, &wr);
+    speculant.x = 
+            p.x * 5
+            + (p.x > 0) * 0
+            + (p.x < 0) * (wr.right - wr.left)
+            + (!p.x) * ( (r.left + r.right) / 2)
+        ;
+    speculant.y =
+            p.y * 5
+            + (p.y > 0) * 0
+            + (p.y < 0) * (wr.bottom - wr.top)
+            + (!p.y) * ( (r.top + r.bottom) / 2l)
+        ;
+    
+    auto found2 = std::find_if(slots.begin(), slots.end(),
+        [&speculant](SlotThing_t& s) -> bool {
+            return PtInRect(&s.r, speculant) != FALSE;
+        });
+    
+    if(found2 != slots.end()) {
+        g_programState.activeSlot = found2 - slots.begin();
+        return;
+    }
+    
+    log(_T("could not find a slot speculating at %ld %ld, silently failing\n"),
+        speculant.x, speculant.y);
+}
+
 static void MoveNext(DWORD direction)
 {
     if(g_programState.activeSlot < 0) {
@@ -730,31 +796,32 @@ static void MoveNext(DWORD direction)
         }
     }
     log(_T("Moving from %ld "), g_programState.activeSlot);
+    POINT p = { 0, 0 };
     switch(direction)
     {
-        case VK_RIGHT:
+        case VK_TAB:
             g_programState.activeSlot++;
             log(_T("by %d\n"), 1);
             break;
-        case VK_LEFT:
+        case VK_BACK:
             g_programState.activeSlot--;
             log(_T("by %d\n"), -1);
             break;
+        case VK_LEFT:
+            p.x = -1;
+            MoveNextGeographically(p);
+            break;
+        case VK_RIGHT:
+            p.x = 1;
+            MoveNextGeographically(p);
+            break;
         case VK_UP:
-            log(_T("by %d\n"),
-                    -g_programState.slots[g_programState.activeSlot]
-                    .moveUpDownAmount);
-            g_programState.activeSlot -=
-                g_programState.slots[g_programState.activeSlot]
-                .moveUpDownAmount;
+            p.y = -1;
+            MoveNextGeographically(p);
             break;
         case VK_DOWN:
-            log(_T("by %d\n"),
-                    g_programState.slots[g_programState.activeSlot]
-                    .moveUpDownAmount);
-            g_programState.activeSlot +=
-                g_programState.slots[g_programState.activeSlot]
-                .moveUpDownAmount;
+            p.y = 1;
+            MoveNextGeographically(p);
             break;
     }
     if(g_programState.activeSlot < 0) {
@@ -989,9 +1056,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             break;
         case VK_TAB:
             if(GetAsyncKeyState(VK_SHIFT)) {
-                MoveNext(VK_LEFT);
+                MoveNext(VK_BACK);
             } else {
-                MoveNext(VK_RIGHT);
+                MoveNext(VK_TAB);
             }
             break;
         case VK_RIGHT:
