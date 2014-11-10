@@ -18,7 +18,7 @@ void MoveCursorOverActiveSlot()
     SetCursorPos(moveHere.x, moveHere.y);
 }
 
-void MoveNextGeographically(POINT p)
+static void MoveNextGeographically(POINT p)
 {
     if(g_programState.activeSlot < 0) {
         log(_T("no active slot"));

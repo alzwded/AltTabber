@@ -86,6 +86,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="AltTabber.cpp" />
+    <ClCompile Include="Gui.cpp" />
     <ClCompile Include="Log.cpp" />
     <ClCompile Include="MonitorGeom.cpp" />
     <ClCompile Include="MoveFunctions.cpp" />
