@@ -323,6 +323,30 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         SelectByMouse(lParam);
         SelectCurrent();
         break;
+    case WM_CHAR:
+        // actually, it would suffice to only ignore:
+        // BACKSPACE, ENTER, ESCAPE, TAB
+        // but let's overkill it
+        switch(wParam) {
+        case VK_APPS: // menu key
+        case VK_ESCAPE:
+        case VK_TAB:
+        case VK_RIGHT:
+        case VK_UP:
+        case VK_DOWN:
+        case VK_LEFT:
+        case VK_RETURN:
+        case VK_F1:
+        case VK_F2:
+        case VK_BACK:
+            return DefWindowProc(hWnd, message, wParam, lParam);
+        }
+        g_programState.filter += (wchar_t)wParam;
+        log(_T("got filter %ls\n"), g_programState.filter.c_str());
+        CreateThumbnails(g_programState.filter);
+        SetThumbnails();
+        RedrawWindow(g_programState.hWnd, NULL, NULL, RDW_INVALIDATE);
+        break;
     case WM_KEYDOWN:
         switch(wParam) {
         case VK_APPS: // menu key
@@ -367,6 +391,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                 RedrawWindow(g_programState.hWnd, NULL, NULL, RDW_INVALIDATE);
             }
             break;
+#if 0
         default: {
             INT hr = (INT)MapVirtualKey(wParam, MAPVK_VK_TO_CHAR);
             if(hr > 0) {
@@ -377,6 +402,10 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                 RedrawWindow(g_programState.hWnd, NULL, NULL, RDW_INVALIDATE);
             }
             break; }
+#else
+        default:
+            return DefWindowProc(hWnd, message, wParam, lParam);
+#endif
         }
         break;
     default:
