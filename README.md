@@ -3,6 +3,8 @@ AltTabber
 
 Right, this app is a silly alternative to Alt-Tab that works somewhat better on multiple monitors (if by *better* you understand *differently*). You have to see it for yourself.
 
+This project lives at https://github.com/alzwded/AltTabber/ .
+
 The keys and functionality:
 
 | action | inputs | comments |
