@@ -53,8 +53,13 @@ void QuitOverlay()
         auto hr = SetForegroundWindow(hwnd);
         log(_T("set foreground window to previous result: %d\n"), hr);
         if(IsIconic(hwnd)) {
-            auto hr = ShowWindow(hwnd, SW_RESTORE);
-            log(_T("restoring %p hr = %d\n"), (void*)hwnd, hr);
+            // note to self: apparently only the owner of the window
+            // can re-maximize it/restore it properly; calling anything
+            // else like SetWindowPlacement or ShowWindow results in
+            // its internal min/max state being broken; by sending
+            // that window an actual message, things seem to work fine
+            auto hr = SendMessage(hwnd, WM_SYSCOMMAND, SC_RESTORE, 0);
+            log(_T("restoring %p hr = %ld\n"), (void*)hwnd, hr);
         }
 
         // I don't really need to do this since windows seem to sometimes do
