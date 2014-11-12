@@ -22,6 +22,7 @@ extern void PurgeThumbnails();
 extern void CreateThumbnails(std::wstring const&);
 extern void SetThumbnails();
 extern void OnPaint(HDC);
+extern void MoveCursorOverActiveSlot(); 
 
 ProgramState_t g_programState = {
     FALSE,
@@ -360,6 +361,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         CreateThumbnails(g_programState.filter);
         SetThumbnails();
         RedrawWindow(g_programState.hWnd, NULL, NULL, RDW_INVALIDATE);
+        MoveCursorOverActiveSlot();
         break;
     case WM_KEYDOWN:
         switch(wParam) {
@@ -403,6 +405,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                 CreateThumbnails(g_programState.filter);
                 SetThumbnails();
                 RedrawWindow(g_programState.hWnd, NULL, NULL, RDW_INVALIDATE);
+                MoveCursorOverActiveSlot();
             }
             break;
 #if 0
