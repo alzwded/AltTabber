@@ -82,7 +82,12 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
     return (int) msg.wParam;
 }
 
-
+static inline void Cleanup()
+{
+    PurgeThumbnails();
+    
+    if(g_programState.freopened != NULL) fclose(g_programState.freopened);
+}
 
 //
 //  FUNCTION: MyRegisterClass()
@@ -165,7 +170,32 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
                 g_programState.hotkey.modifiers,
                 g_programState.hotkey.key))
     {
-        log(_T("win+caps registered\n"));
+        log(_T("hotkey registered successfully\n"));
+    }
+    else
+    {
+        log(_T("failed to register hotkey\n"));
+        MessageBox(hWnd,
+                _T("Failed to register hotkey.\n"                           )
+                _T("\n"                                                     )
+                _T("This usually means that there is already a program\n"   )
+                _T("running that has registered the same hotkey.\n"         )
+                _T("\n"                                                     )
+                _T("Possible resolutions:\n"                                )
+                _T("- Close the already running instance of AltTabber\n"    )
+                _T("- If there is another application that has registered\n")
+                _T("  the current hotkey, change it in that application\n"  )
+                _T("- Change AltTabber's hotkey by editing the registry\n"  )
+                _T("  Refer to the README.md document (which you can find\n")
+                _T("  at http://github.com/alzwded/AltTabber ) on how to\n" )
+                _T("  accomplish this.\n"                                   )
+                _T("\n"                                                     )
+                _T("The application will now exit"                          )
+            ,
+            _T("AltTabber - Failed to register hotkey"),
+            MB_OK | MB_ICONERROR);
+        Cleanup();
+        PostQuitMessage(0);
     }
 
     g_programState.hWnd = hWnd;
@@ -184,13 +214,6 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
     HRESULT sniHr = Shell_NotifyIcon(NIM_ADD, &nid);
 
     return TRUE;
-}
-
-static inline void Cleanup()
-{
-    PurgeThumbnails();
-    
-    if(g_programState.freopened != NULL) fclose(g_programState.freopened);
 }
 
 static void ShowContextMenu(int x, int y)
