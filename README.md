@@ -7,7 +7,7 @@ This project lives at https://github.com/alzwded/AltTabber/ .
 
 The keys and functionality:
 
-*(*hotkey* refers to the global hotkey associated with AltTabber. By default, it is `ALT`-`key above tab`)*
+(*hotkey refers to the global hotkey associated with AltTabber. By default, it is `ALT`-`key above tab`*)
 
 | action | inputs | comments |
 |-----------|-----------|-----------------|
