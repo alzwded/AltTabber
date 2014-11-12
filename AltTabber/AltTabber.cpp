@@ -324,21 +324,12 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         SelectCurrent();
         break;
     case WM_CHAR:
-        // actually, it would suffice to only ignore:
-        // BACKSPACE, ENTER, ESCAPE, TAB
-        // but let's overkill it
         switch(wParam) {
-        case VK_APPS: // menu key
-        case VK_ESCAPE:
-        case VK_TAB:
-        case VK_RIGHT:
-        case VK_UP:
-        case VK_DOWN:
-        case VK_LEFT:
-        case VK_RETURN:
-        case VK_F1:
-        case VK_F2:
-        case VK_BACK:
+        case 0x1B: // esc
+        case 0x08: // backspace
+        case 0x09: // tab
+        case 0x0D: // enter
+        // case 0x0A: // LF
             return DefWindowProc(hWnd, message, wParam, lParam);
         }
         g_programState.filter += (wchar_t)wParam;
