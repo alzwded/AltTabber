@@ -238,8 +238,11 @@ void OnPaint(HDC hdc)
     auto originalBrush = SelectObject(hdc, GetStockObject(DC_BRUSH));
     SelectObject(hdc, GetStockObject(DC_BRUSH));
 
+    LONG fSize = 12l;
+    fSize = MulDiv(fSize, GetDeviceCaps(hdc, LOGPIXELSY), 72);
+    if(fSize != 12l) log(_T("font size scaled to %ld\n"), fSize);
     HFONT font = CreateFont(
-            0, 9, 0, 0, 0, 0, 0, 0,
+            fSize, 0, 0, 0, 0, 0, 0, 0,
             DEFAULT_CHARSET,
             OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
             CLEARTYPE_QUALITY, 
