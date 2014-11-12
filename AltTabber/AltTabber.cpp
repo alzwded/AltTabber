@@ -30,7 +30,11 @@ ProgramState_t g_programState = {
     -1,
     FALSE,
     NULL,
+#ifdef JAT_OLD_HOTKEY
     { MOD_ALT | MOD_CONTROL, '3' },
+#else
+    { MOD_ALT, VK_OEM_3 },
+#endif
 };
 
 // Global Variables:
