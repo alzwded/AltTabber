@@ -10,9 +10,17 @@ static inline BOOL IsAltTabWindow(HWND hwnd)
     if(!IsWindowVisible(hwnd))
         return FALSE;
 
-#if 0
-    // disable this check to get some windows like e.g.
-    // the copy file dialog to show up (even though alt-tab doesn' do this)
+    TCHAR str[MAX_PATH + 1];
+    GetWindowText(hwnd, str, MAX_PATH);
+
+    log(_T("window %ls has style %lX and exstyle %lX\n"),
+        str,
+        GetWindowLong(hwnd, GWL_STYLE),
+        GetWindowLong(hwnd, GWL_EXSTYLE));
+
+    // this prevents stuff like the copy file dialog from showing up
+    // but it also prevents stuff like tunngle's border windows from
+    // showing up; I've opted to hide all of them.
     HWND hwndTry, hwndWalk = NULL;
     hwndTry = GetAncestor(hwnd, GA_ROOTOWNER);
     while(hwndTry != hwndWalk) 
@@ -24,7 +32,6 @@ static inline BOOL IsAltTabWindow(HWND hwnd)
     }
     if(hwndWalk != hwnd)
         return FALSE;
-#endif
 
     // this prevents borderless windows from showing up (like steam or remote desktop)
 #if 0
@@ -41,6 +48,18 @@ static inline BOOL IsAltTabWindow(HWND hwnd)
     // task bar.
     if(GetWindowLong(hwnd, GWL_EXSTYLE) & WS_EX_TOOLWINDOW)
         return FALSE;
+
+    if(GetWindowLong(hwnd, GWL_STYLE) & WS_CHILD)
+        return FALSE;
+#if 0
+    LONG style = GetWindowLong(hwnd, GWL_EXSTYLE);
+    if((style & (WS_VISIBLE | WS_EX_TOOLWINDOW | WS_POPUP | WS_CAPTION
+        | WS_DLGFRAME | WS_OVERLAPPED | WS_TILED | WS_SYSMENU | WS_THICKFRAME
+        )) == 0)
+    {
+        return FALSE;
+    }
+#endif
 
     return TRUE;
 }
@@ -94,7 +113,8 @@ static BOOL CALLBACK enumWindows(HWND hwnd, LPARAM lParam)
         return TRUE;
     }
 
-    HMONITOR hMonitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
+    HMONITOR hMonitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONULL);
+    if(hMonitor == NULL) return TRUE;
     HTHUMBNAIL hThumb = NULL;
     auto hr = DwmRegisterThumbnail(g_programState.hWnd, hwnd, &hThumb);
     log(_T("register thumbnail for %p on monitor %p: %d\n"),
