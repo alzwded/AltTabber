@@ -27,7 +27,11 @@ The `modifiers` value is a combination of [the values described for fsModifiers 
 
 The `key` value is one of [these](http://msdn.microsoft.com/en-us/library/windows/desktop/dd375731.aspx).
 
+For example, you can set the `modifiers` value to `1` (Alt) and the `key` value to `C0` (the key above tab) to have the hotkey motion similar to alt tab. If you didn't catch on, the aforementioned values are numbers in hexadecimal.
+
 If you mess something up, just delete the `HKEY_CURRENT_USER\Software\jakka\AltTabber` key and the app will make sure to recreate it again from defaults.
+
+If you want to remove this app from your computer forever, remember to also delete that key. No uninstaller is currently provided, and it's unlikely that one will be provided anytime in the future.
 
 Disclaimer
 ==========
