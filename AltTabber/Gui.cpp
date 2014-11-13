@@ -113,7 +113,14 @@ static BOOL CALLBACK enumWindows(HWND hwnd, LPARAM lParam)
         return TRUE;
     }
 
+#if 0
+    // I keep finding myself rewriting this code twice a day, so keep it
+    // floating around
+    HMONITOR hMonitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONULL);
+    if(!hMonitor) return TRUE;
+#else
     HMONITOR hMonitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
+#endif
     HTHUMBNAIL hThumb = NULL;
     auto hr = DwmRegisterThumbnail(g_programState.hWnd, hwnd, &hThumb);
     log(_T("register thumbnail for %p on monitor %p: %d\n"),
@@ -165,7 +172,13 @@ void PurgeThumbnails()
 void CreateThumbnails(std::wstring const& filter)
 {
     PurgeThumbnails();
-    auto hr = EnumWindows(enumWindows, (LPARAM)&filter);
+    auto hDesktop = OpenInputDesktop(0, FALSE, GENERIC_READ);
+    if(!hDesktop) {
+        log(_T("open desktop failed; errno = %d\n"), GetLastError());
+        return;
+    }
+    auto hr = EnumDesktopWindows(hDesktop, enumWindows, (LPARAM)&filter);
+    CloseDesktop(hDesktop);
     log(_T("enum desktop windows: %d\n"), hr);
 }
 
