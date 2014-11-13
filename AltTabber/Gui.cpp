@@ -113,8 +113,7 @@ static BOOL CALLBACK enumWindows(HWND hwnd, LPARAM lParam)
         return TRUE;
     }
 
-    HMONITOR hMonitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONULL);
-    if(hMonitor == NULL) return TRUE;
+    HMONITOR hMonitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
     HTHUMBNAIL hThumb = NULL;
     auto hr = DwmRegisterThumbnail(g_programState.hWnd, hwnd, &hThumb);
     log(_T("register thumbnail for %p on monitor %p: %d\n"),
