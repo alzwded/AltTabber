@@ -69,7 +69,7 @@ static inline BOOL IsAltTabWindow(HWND hwnd)
 static BOOL GetImagePathName(HWND hwnd, std::wstring& imagePathName)
 {
     BOOL hr = 0;
-    TCHAR str2[1024 + 1];
+    TCHAR str2[MAX_PATH + 1];
     DWORD procId;
     if(GetWindowThreadProcessId(hwnd, &procId) > 0) {
         auto hnd = OpenProcess(
@@ -78,7 +78,7 @@ static BOOL GetImagePathName(HWND hwnd, std::wstring& imagePathName)
                 procId);
         if(hnd != NULL) {
             UINT len;
-            if((len = GetModuleFileNameEx(hnd, NULL, str2, 1024)) > 0) {
+            if((len = GetModuleFileNameEx(hnd, NULL, str2, MAX_PATH)) > 0) {
                 imagePathName.assign(&str2[0], &str2[len]);
                 hr = 1;
             } else {
