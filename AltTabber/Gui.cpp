@@ -1,5 +1,6 @@
 #include "stdafx.h"
 #include "AltTabber.h"
+#include <WinUser.h>
 
 extern ProgramState_t g_programState;
 extern void log(LPTSTR fmt, ...);
@@ -68,7 +69,7 @@ static inline BOOL IsAltTabWindow(HWND hwnd)
 static BOOL GetImagePathName(HWND hwnd, std::wstring& imagePathName)
 {
     BOOL hr = 0;
-    TCHAR str2[MAX_PATH + 1];
+    TCHAR str2[1024 + 1];
     DWORD procId;
     if(GetWindowThreadProcessId(hwnd, &procId) > 0) {
         auto hnd = OpenProcess(
@@ -77,9 +78,14 @@ static BOOL GetImagePathName(HWND hwnd, std::wstring& imagePathName)
                 procId);
         if(hnd != NULL) {
             UINT len;
-            if((len = GetModuleFileNameEx(hnd, NULL, str2, MAX_PATH)) > 0) {
+            if((len = GetModuleFileNameEx(hnd, NULL, str2, 1024)) > 0) {
                 imagePathName.assign(&str2[0], &str2[len]);
                 hr = 1;
+            } else {
+                log(_T("GetModuleFileNameEx failed: %u errno %d\n"), len, GetLastError());
+                // okay, if it fails with errno 299 it's because there's
+                // an issue with 64bit processes querried from a 32bit process
+                // compiling AltTabber for x64 should fix that.
             }
             CloseHandle(hnd);
         }
@@ -120,7 +126,7 @@ static BOOL CALLBACK enumWindows(HWND hwnd, LPARAM lParam)
         hMonitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONULL);
         if(!hMonitor) return TRUE;
     } else {
-        HMONITOR hMonitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
+        hMonitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
     }
 
     HTHUMBNAIL hThumb = NULL;
@@ -141,7 +147,7 @@ static BOOL CALLBACK enumWindows(HWND hwnd, LPARAM lParam)
             APP_THUMB_COMPAT,
             hwnd,
         };
-        HICON hIcon = (HICON)GetClassLong(hwnd, GCL_HICON);
+        HICON hIcon = (HICON)GetClassLong(hwnd, GCLP_HICON);
         at.icon = hIcon;
         g_programState.thumbnails[hMonitor].push_back(at);
     }
@@ -185,7 +191,7 @@ void CreateThumbnails(std::wstring const& filter)
 }
 
 template<typename F>
-void PerformSlotting(F& functor)
+void PerformSlotting(F&& functor)
 {
     auto mis = GetMonitorGeometry();
     for(size_t i = 0; i < mis.monitors.size(); ++i) {
@@ -222,11 +228,11 @@ void SetThumbnails()
 
     MonitorGeom_t mis = GetMonitorGeometry();
 
-    PerformSlotting([&](MonitorInfo_t& mi, size_t j, long l1, long l2, long hs, long ws) {
+    PerformSlotting([&](MonitorInfo_t& mi, size_t j, long l1, long, long hs, long ws) {
             AppThumb_t& thumb = g_programState.thumbnails[mi.hMonitor][j];
 
-            long x = (j % l1) * ws + 3;
-            long y = (j / l1) * hs + hs / 3;
+            long x = ((long)j % l1) * ws + 3;
+            long y = ((long)j / l1) * hs + hs / 3;
             long x1 = x + ws - 3;
             long y1 = y + hs - hs / 3;
             RECT r;
@@ -244,13 +250,13 @@ void SetThumbnails()
             }
 
             if(thumb.hwnd == g_programState.prevActiveWindow) {
-                g_programState.activeSlot = nthSlot;
+                g_programState.activeSlot = (long)nthSlot;
             }
 
             SlotThing_t st;
             st.hwnd = thumb.hwnd;
             st.r.left = mi.extent.left - mis.r.left + (j % l1) * ws;
-            st.r.top = mi.extent.top - mis.r.top + (j / l1) * hs;
+            st.r.top = mi.extent.top - mis.r.top + ((long)j / l1) * hs;
             st.r.right = st.r.left + ws;
             st.r.bottom = st.r.top + hs;
             st.moveUpDownAmount = l1;
@@ -268,7 +274,7 @@ void OnPaint(HDC hdc)
 {
     HGDIOBJ original = NULL;
     original = SelectObject(hdc, GetStockObject(DC_PEN));
-    HPEN pen = CreatePen(PS_SOLID, 5, RGB(0, 255, 0));
+    //HPEN pen = CreatePen(PS_SOLID, 5, RGB(0, 255, 0));
     auto originalBrush = SelectObject(hdc, GetStockObject(DC_BRUSH));
     SelectObject(hdc, GetStockObject(DC_BRUSH));
 
@@ -310,12 +316,12 @@ void OnPaint(HDC hdc)
     SelectObject(hdc, GetStockObject(BLACK_PEN));
     int prevBkMode = SetBkMode(hdc, TRANSPARENT);
 
-    PerformSlotting([&](MonitorInfo_t& mi, size_t j, long l1, long l2, long hs, long ws) {
+    PerformSlotting([&](MonitorInfo_t& mi, size_t j, long l1, long, long hs, long ws) {
             AppThumb_t& thumb = g_programState.thumbnails[mi.hMonitor][j];
             HWND hwnd = thumb.hwnd;
             
-            long x = (j % l1) * ws + 3;
-            long y = (j / l1) * hs + 3;
+            long x = ((long)j % l1) * ws + 3;
+            long y = ((long)j / l1) * hs + 3;
             long x1 = x + ws - 3;
             long y1 = y + hs - 2 * hs / 3 - 2;
             RECT r;

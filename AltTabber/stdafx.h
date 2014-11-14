@@ -31,6 +31,7 @@
 #include <sstream>
 #include <Shellapi.h>
 #include <Psapi.h>
+#include <Winuser.h>
 
 #include <dwmapi.h>
 

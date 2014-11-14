@@ -139,7 +139,7 @@ ATOM MyRegisterClass(HINSTANCE hInstance)
 //        In this function, we save the instance handle in a global variable and
 //        create and display the main program window.
 //
-BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
+BOOL InitInstance(HINSTANCE hInstance, int)
 {
     HWND hWnd;
 
@@ -218,6 +218,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 #undef TIP
     nid.hIcon = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_SMALL));
     HRESULT sniHr = Shell_NotifyIcon(NIM_ADD, &nid);
+    log(_T("Shell_NotifyIcon result: %ld errno %ld\n"), sniHr, GetLastError());
 
     auto hrFW = FindWindow(_T("ThunderRT6Main"), _T("Dexpot"));
     if(hrFW) {
@@ -234,7 +235,7 @@ static void ShowContextMenu(int x, int y)
     {
         HMENU ctxMenu = CreatePopupMenu();
         AppendMenu(ctxMenu, MF_STRING, MY_CLOSE_BTN_ID, _T("Close"));
-        auto hr = TrackPopupMenu(ctxMenu, 
+        TrackPopupMenu(ctxMenu, 
             TPM_RIGHTBUTTON,
             x, y,
             0, g_programState.hWnd, NULL);
@@ -340,7 +341,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         break; }
     case WM_RBUTTONUP:
         if(!g_programState.showing) break;
-        SelectByMouse(lParam);
+        SelectByMouse((DWORD)lParam);
         {
             POINT p = { GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) };
             ClientToScreen(g_programState.hWnd, &p);
@@ -349,12 +350,12 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         break;
     case WM_LBUTTONUP:
         if(!g_programState.showing) break;
-        SelectByMouse(lParam);
+        SelectByMouse((DWORD)lParam);
         break;
     case WM_LBUTTONDBLCLK:
     case WM_RBUTTONDBLCLK:
         if(!g_programState.showing) break;
-        SelectByMouse(lParam);
+        SelectByMouse((DWORD)lParam);
         SelectCurrent();
         break;
     case WM_CHAR:
@@ -395,7 +396,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         case VK_UP:
         case VK_DOWN:
         case VK_LEFT:
-            MoveNext(wParam);
+            MoveNext((DWORD)wParam);
             break;
         case VK_RETURN:
             SelectCurrent();

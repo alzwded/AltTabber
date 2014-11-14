@@ -49,7 +49,7 @@ static void MoveNextGeographically(POINT p)
         });
 
     if(found != slots.end()) {
-        g_programState.activeSlot = found - slots.begin();
+        g_programState.activeSlot = (long)(found - slots.begin());
         return;
     }
     /* else */
@@ -76,7 +76,7 @@ static void MoveNextGeographically(POINT p)
         });
     
     if(found2 != slots.end()) {
-        g_programState.activeSlot = found2 - slots.begin();
+        g_programState.activeSlot = (long)(found2 - slots.begin());
         return;
     }
     
@@ -88,7 +88,7 @@ void MoveNext(DWORD direction)
 {
     if(g_programState.activeSlot < 0) {
         if(g_programState.slots.size() > 0) {
-            g_programState.activeSlot = g_programState.slots.size() - 1;
+            g_programState.activeSlot = (long)(g_programState.slots.size() - 1);
         } else {
             return;
         }
@@ -123,8 +123,8 @@ void MoveNext(DWORD direction)
             break;
     }
     if(g_programState.activeSlot < 0) {
-        g_programState.activeSlot =
-            g_programState.slots.size() + g_programState.activeSlot;
+        g_programState.activeSlot = (long)
+            (g_programState.slots.size() + g_programState.activeSlot);
     }
     g_programState.activeSlot %= g_programState.slots.size();
 
@@ -150,7 +150,7 @@ void SelectByMouse(DWORD lParam)
                 return PtInRect(&thing.r, pt);
             });
     if(found != g_programState.slots.end()) {
-        g_programState.activeSlot = found - g_programState.slots.begin();
+        g_programState.activeSlot = (long)(found - g_programState.slots.begin());
         RedrawWindow(g_programState.hWnd, NULL, NULL, RDW_INVALIDATE);
     }
 }

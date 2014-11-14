@@ -5,8 +5,8 @@ extern void log(LPTSTR fmt, ...);
 
 BOOL CALLBACK monitorEnumProc(
     HMONITOR hMonitor,
-    HDC hdcMonitor,
-    LPRECT lprcMonitor,
+    HDC /*hdcMonitor*/,
+    LPRECT /*lprcMonitor*/,
     LPARAM dwData)
 {
     MONITORINFO mi;
