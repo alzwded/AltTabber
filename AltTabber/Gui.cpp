@@ -12,11 +12,12 @@ static inline BOOL IsAltTabWindow(HWND hwnd)
 
     TCHAR str[MAX_PATH + 1];
     GetWindowText(hwnd, str, MAX_PATH);
-
+    
     log(_T("window %ls has style %lX and exstyle %lX\n"),
         str,
         GetWindowLong(hwnd, GWL_STYLE),
         GetWindowLong(hwnd, GWL_EXSTYLE));
+    log(_T("parent: %p\n"), GetParent(hwnd));
 
     // this prevents stuff like the copy file dialog from showing up
     // but it also prevents stuff like tunngle's border windows from
@@ -113,7 +114,7 @@ static BOOL CALLBACK enumWindows(HWND hwnd, LPARAM lParam)
         return TRUE;
     }
 
-#if 0
+#if 1
     // I keep finding myself rewriting this code twice a day, so keep it
     // floating around
     HMONITOR hMonitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONULL);
