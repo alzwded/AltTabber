@@ -114,14 +114,15 @@ static BOOL CALLBACK enumWindows(HWND hwnd, LPARAM lParam)
         return TRUE;
     }
 
-#if 1
-    // I keep finding myself rewriting this code twice a day, so keep it
-    // floating around
-    HMONITOR hMonitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONULL);
-    if(!hMonitor) return TRUE;
-#else
+    HMONITOR hMonitor = NULL;
+
+    if(g_programState.compatHacks & JAT_HACK_DEXPOT) {
+        hMonitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONULL);
+        if(!hMonitor) return TRUE;
+    } else {
     HMONITOR hMonitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
-#endif
+    }
+
     HTHUMBNAIL hThumb = NULL;
     auto hr = DwmRegisterThumbnail(g_programState.hWnd, hwnd, &hThumb);
     log(_T("register thumbnail for %p on monitor %p: %d\n"),

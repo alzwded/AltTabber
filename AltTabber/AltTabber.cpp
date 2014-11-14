@@ -35,6 +35,7 @@ ProgramState_t g_programState = {
 #else
     { MOD_ALT, VK_OEM_3 },
 #endif
+    0,
 };
 
 // Global Variables:
@@ -217,6 +218,9 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 #undef TIP
     nid.hIcon = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_SMALL));
     HRESULT sniHr = Shell_NotifyIcon(NIM_ADD, &nid);
+
+    auto hrFW = FindWindow(_T("ThunderRT6Main"), _T("Dexpot"));
+    g_programState.compatHacks |= JAT_HACK_DEXPOT;
 
     return TRUE;
 }

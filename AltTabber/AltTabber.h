@@ -23,6 +23,8 @@ typedef struct {
     int moveUpDownAmount;
 } SlotThing_t;
 
+#define JAT_HACK_DEXPOT 1
+
 typedef struct {
     BOOL showing;
     HWND prevActiveWindow;
@@ -33,6 +35,7 @@ typedef struct {
         UINT modifiers;
         UINT key;
     } hotkey;
+    DWORD compatHacks;
 
     HWND hWnd;
     std::map<HMONITOR, std::vector<AppThumb_t> > thumbnails;
