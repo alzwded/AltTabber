@@ -120,7 +120,7 @@ static BOOL CALLBACK enumWindows(HWND hwnd, LPARAM lParam)
         hMonitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONULL);
         if(!hMonitor) return TRUE;
     } else {
-    HMONITOR hMonitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
+        HMONITOR hMonitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
     }
 
     HTHUMBNAIL hThumb = NULL;
