@@ -220,7 +220,9 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
     HRESULT sniHr = Shell_NotifyIcon(NIM_ADD, &nid);
 
     auto hrFW = FindWindow(_T("ThunderRT6Main"), _T("Dexpot"));
-    g_programState.compatHacks |= JAT_HACK_DEXPOT;
+    if(hrFW) {
+        g_programState.compatHacks |= JAT_HACK_DEXPOT;
+    }
 
     return TRUE;
 }
