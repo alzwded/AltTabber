@@ -25,6 +25,8 @@ void SynchronizeWithRegistry()
         return;
     }
 
+#pragma warning(push)
+#pragma warning(disable:4512)
     struct x_SynchronizeWithRegistry_OnExit {
         HKEY& m_hk;
         x_SynchronizeWithRegistry_OnExit(HKEY& hk)
@@ -34,6 +36,7 @@ void SynchronizeWithRegistry()
             RegCloseKey(m_hk);
         }
     } witness(phk);
+#pragma warning(pop)
     
     DWORD dModifiers = (DWORD)g_programState.hotkey.modifiers;
     DWORD dKey = (DWORD)g_programState.hotkey.key;
