@@ -41,6 +41,8 @@ typedef struct {
     std::map<HMONITOR, std::vector<AppThumb_t> > thumbnails;
     std::vector<SlotThing_t> slots;
     std::wstring filter;
+
+    ULONG sleptThroughNWindows;
 } ProgramState_t;
 
 typedef struct {
