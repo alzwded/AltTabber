@@ -298,10 +298,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     case MY_NOTIFY_ICON_MESSAGE_ID: {
         auto what = LOWORD(lParam);
         switch(what) {
-        case WM_LBUTTONUP:
+        case NIN_SELECT:
             ActivateSwitcher();
             break;
-        case NIN_SELECT:
         case NIN_KEYSELECT:
         case WM_CONTEXTMENU: {
             POINT location;
