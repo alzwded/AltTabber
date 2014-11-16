@@ -9,6 +9,8 @@
 #define MY_NOTIFICATION_ICON 2
 #define MY_NOTIFY_ICON_MESSAGE_ID (WM_USER + 88)
 #define MY_CLOSE_BTN_ID (WM_USER + 89)
+#define MY_TRAY_CLOSE_BTN_ID (WM_USER + 90)
+#define MY_TRAY_OPEN_BTN_ID (WM_USER + 91)
 
 extern void log(LPTSTR fmt, ...);
 extern MonitorGeom_t GetMonitorGeometry();
@@ -93,6 +95,13 @@ static inline void Cleanup()
     PurgeThumbnails();
     
     if(g_programState.freopened != NULL) fclose(g_programState.freopened);
+
+    NOTIFYICONDATA nid;
+    nid.cbSize = sizeof(NOTIFYICONDATA);
+    nid.uID = MY_NOTIFICATION_ICON;
+    nid.hWnd = g_programState.hWnd;
+    nid.uFlags = 0;
+    Shell_NotifyIcon(NIM_DELETE, &nid);
 }
 
 //
@@ -210,14 +219,23 @@ BOOL InitInstance(HINSTANCE hInstance, int)
     ZeroMemory(&nid,sizeof(NOTIFYICONDATA));
     nid.cbSize = sizeof(NOTIFYICONDATA);
     nid.uID = MY_NOTIFICATION_ICON;
-    nid.uFlags = NIF_ICON | NIF_TIP | NIF_MESSAGE ;
+    nid.uFlags = NIF_ICON | NIF_TIP | NIF_SHOWTIP | NIF_MESSAGE ;
     nid.hWnd = hWnd;
+    nid.uVersion = NOTIFYICON_VERSION_4;
     nid.uCallbackMessage = MY_NOTIFY_ICON_MESSAGE_ID;
-#define TIP (_T("AltTabber\n- Ctrl-Alt-3 to open overlay\n- Alt-F4 when overlay is active to quit"))
-    _tcsncpy_s(nid.szTip, TIP, _tcslen(TIP));
-#undef TIP
+
+    TCHAR tip[64];
+    // TODO inform about current hotkey better
+    wsprintf(tip, _T("AltTabber - hotkey in hexadecimal codes is %04X %04X"),
+        g_programState.hotkey.modifiers,
+        g_programState.hotkey.key);
+    _tcsncpy_s(nid.szTip, tip, _tcslen(tip));
+
     nid.hIcon = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_SMALL));
     HRESULT sniHr = Shell_NotifyIcon(NIM_ADD, &nid);
+    log(_T("Shell_NotifyIcon result: %ld errno %ld\n"), sniHr, GetLastError());
+    nid.uFlags = 0;
+    sniHr = Shell_NotifyIcon(NIM_SETVERSION, &nid);
     log(_T("Shell_NotifyIcon result: %ld errno %ld\n"), sniHr, GetLastError());
 
     auto hrFW = FindWindow(_T("ThunderRT6Main"), _T("Dexpot"));
@@ -234,13 +252,29 @@ static void ShowContextMenu(int x, int y)
         && (unsigned long)g_programState.activeSlot < g_programState.slots.size())
     {
         HMENU ctxMenu = CreatePopupMenu();
-        AppendMenu(ctxMenu, MF_STRING, MY_CLOSE_BTN_ID, _T("Close"));
+        AppendMenu(ctxMenu, MF_STRING, MY_CLOSE_BTN_ID, _T("&Close"));
         TrackPopupMenu(ctxMenu, 
             TPM_RIGHTBUTTON,
             x, y,
             0, g_programState.hWnd, NULL);
         DestroyMenu(ctxMenu);
     }
+}
+
+static inline void NotificationAreaMenu(POINT location)
+{
+    // as per documentation, if hWnd is not the foreground window,
+    // then the popup menu will not go away. So do that.
+    SetForegroundWindow(g_programState.hWnd);
+    // actually show the menu
+    HMENU ctxMenu = CreatePopupMenu();
+    AppendMenu(ctxMenu, MF_STRING, MY_TRAY_OPEN_BTN_ID, _T("&Open"));
+    AppendMenu(ctxMenu, MF_STRING, MY_TRAY_CLOSE_BTN_ID, _T("E&xit"));
+    TrackPopupMenu(ctxMenu, 
+        TPM_RIGHTBUTTON,
+        location.x, location.y,
+        0, g_programState.hWnd, NULL);
+    DestroyMenu(ctxMenu);
 }
 
 //
@@ -267,6 +301,14 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         case WM_LBUTTONUP:
             ActivateSwitcher();
             break;
+        case NIN_SELECT:
+        case NIN_KEYSELECT:
+        case WM_CONTEXTMENU: {
+            POINT location;
+            location.x = GET_X_LPARAM(wParam);
+            location.y = GET_Y_LPARAM(wParam);
+            NotificationAreaMenu(location);
+            break; }
         }
         break; }
     case WM_COMMAND:
@@ -280,6 +322,12 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             break;
         case IDM_EXIT:
             DestroyWindow(hWnd);
+            break;
+        case MY_TRAY_OPEN_BTN_ID:
+            ActivateSwitcher();
+            break;
+        case MY_TRAY_CLOSE_BTN_ID:
+            PostMessage(hWnd, WM_CLOSE, 0, 0);
             break;
         case MY_CLOSE_BTN_ID:
             if(g_programState.activeSlot >= 0) {
