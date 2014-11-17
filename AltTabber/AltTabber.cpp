@@ -344,11 +344,7 @@ void MoveToMonitor(unsigned int monitor)
 
     // apparent SetWindowPlacement don't work if it's maximized
     if((newWpl.showCmd & SW_MAXIMIZE)) {
-        auto old = newWpl.showCmd;
-        newWpl.showCmd &= ~SW_MAXIMIZE;
-        newWpl.showCmd |= SW_RESTORE;
-        SetWindowPlacement(hwnd, &newWpl);
-        newWpl.showCmd = old;
+        PostMessage(hwnd, WM_SYSCOMMAND, SC_RESTORE, 0);
     }
     SetWindowPlacement(hwnd, &newWpl);
     Sleep(50);
@@ -363,7 +359,7 @@ void MoveToMonitor(unsigned int monitor)
             return sthing.hwnd == hwnd;
     });
     if(foundSlot != g_programState.slots.end()) {
-        g_programState.activeSlot = foundSlot - g_programState.slots.begin();
+        g_programState.activeSlot = (long)(foundSlot - g_programState.slots.begin());
         MoveCursorOverActiveSlot();
     }
 }

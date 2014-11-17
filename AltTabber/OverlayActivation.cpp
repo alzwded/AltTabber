@@ -59,17 +59,10 @@ void QuitOverlay()
             // its internal min/max state being broken; by sending
             // that window an actual message, things seem to work fine
 
-            WINDOWPLACEMENT wpl;
-            wpl.length = sizeof(WINDOWPLACEMENT);
-            GetWindowPlacement(hwnd, &wpl);
-
-            auto hr = SendMessage(hwnd, WM_SYSCOMMAND, SC_RESTORE, 0);
+            auto hr = PostMessage(hwnd, WM_SYSCOMMAND, SC_RESTORE, 0);
+            //auto hr = SendMessage(hwnd, WM_SYSCOMMAND, SC_RESTORE, 0);
+            //auto hr = OpenIcon(hwnd);
             log(_T("restoring %p hr = %ld\n"), (void*)hwnd, hr);
-            
-            if(wpl.showCmd & SW_MINIMIZE) {
-                hr = SendMessage(hwnd, WM_SYSCOMMAND, SC_MAXIMIZE, 0);
-                log(_T("restoring maximized %p hr = %ld\n"), (void*)hwnd, hr);
-            }
         }
 
         // I don't really need to do this since windows seem to sometimes do
