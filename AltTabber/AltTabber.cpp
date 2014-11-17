@@ -12,6 +12,18 @@
 #define MY_TRAY_CLOSE_BTN_ID (WM_USER + 90)
 #define MY_TRAY_OPEN_BTN_ID (WM_USER + 91)
 
+#define MY_MOVE_TO_BASE_ID (WM_USER + 100)
+#define MY_MOVE_TO_1_ID  (MY_MOVE_TO_BASE_ID + 0)
+#define MY_MOVE_TO_2_ID  (MY_MOVE_TO_BASE_ID + 1)
+#define MY_MOVE_TO_3_ID  (MY_MOVE_TO_BASE_ID + 2)
+#define MY_MOVE_TO_4_ID  (MY_MOVE_TO_BASE_ID + 3)
+#define MY_MOVE_TO_5_ID  (MY_MOVE_TO_BASE_ID + 4)
+#define MY_MOVE_TO_6_ID  (MY_MOVE_TO_BASE_ID + 5)
+#define MY_MOVE_TO_7_ID  (MY_MOVE_TO_BASE_ID + 6)
+#define MY_MOVE_TO_8_ID  (MY_MOVE_TO_BASE_ID + 7)
+#define MY_MOVE_TO_9_ID  (MY_MOVE_TO_BASE_ID + 8)
+#define MY_MOVE_TO_10_ID (MY_MOVE_TO_BASE_ID + 9)
+
 extern void log(LPTSTR fmt, ...);
 extern MonitorGeom_t GetMonitorGeometry();
 extern void SynchronizeWithRegistry();
@@ -253,6 +265,23 @@ static void ShowContextMenu(int x, int y)
     {
         HMENU ctxMenu = CreatePopupMenu();
         AppendMenu(ctxMenu, MF_STRING, MY_CLOSE_BTN_ID, _T("&Close"));
+
+        auto isIconic = IsIconic(g_programState.slots[g_programState.activeSlot].hwnd);
+        auto mis = GetMonitorGeometry();
+        auto size = mis.monitors.size();
+        if(/*!isIconic &&*/ size > 1 && size <= 10)
+        {
+            AppendMenu(ctxMenu, MF_SEPARATOR, 0, NULL);
+            for(size_t i = 0; i < size; ++i) {
+                TCHAR str[256];
+                wsprintf(str, _T("Move to monitor %lu"), (unsigned long)(i + 1));
+                AppendMenu(ctxMenu, MF_STRING, MY_MOVE_TO_BASE_ID + i, str);
+            }
+        } else if(isIconic) {
+            AppendMenu(ctxMenu, MF_SEPARATOR, 0, NULL);
+            AppendMenu(ctxMenu, MF_STRING | MF_DISABLED, 0, _T("Window is minimized."));
+        }
+
         TrackPopupMenu(ctxMenu, 
             TPM_RIGHTBUTTON,
             x, y,
@@ -269,12 +298,74 @@ static inline void NotificationAreaMenu(POINT location)
     // actually show the menu
     HMENU ctxMenu = CreatePopupMenu();
     AppendMenu(ctxMenu, MF_STRING, MY_TRAY_OPEN_BTN_ID, _T("&Open"));
+    AppendMenu(ctxMenu, MF_SEPARATOR, 0, NULL);
     AppendMenu(ctxMenu, MF_STRING, MY_TRAY_CLOSE_BTN_ID, _T("E&xit"));
     TrackPopupMenu(ctxMenu, 
         TPM_RIGHTBUTTON,
         location.x, location.y,
         0, g_programState.hWnd, NULL);
     DestroyMenu(ctxMenu);
+}
+
+void MoveToMonitor(unsigned int monitor)
+{
+    if(g_programState.activeSlot < 0) return;
+
+    HWND hwnd = g_programState.slots[g_programState.activeSlot].hwnd;
+    auto mis = GetMonitorGeometry();
+    auto mi = mis.monitors[monitor];
+    
+    WINDOWPLACEMENT wpl;
+    wpl.length = sizeof(WINDOWPLACEMENT);
+    GetWindowPlacement(hwnd, &wpl);
+    WINDOWPLACEMENT newWpl;
+    ZeroMemory(&newWpl, sizeof(newWpl));
+    newWpl.flags = WPF_ASYNCWINDOWPLACEMENT;
+    newWpl.length = sizeof(WINDOWPLACEMENT);
+    newWpl.showCmd = wpl.showCmd;
+
+    auto hmonitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
+    auto found = std::find_if(mis.monitors.begin(), mis.monitors.end(), [&hmonitor](MonitorInfo_t& mif)->bool {
+        return mif.hMonitor == hmonitor;
+    });
+    auto oldMonitor = *found;
+
+    newWpl.rcNormalPosition = wpl.rcNormalPosition;
+    int diffX = oldMonitor.extent.left - mi.extent.left;
+    int diffY = oldMonitor.extent.top - mi.extent.top;
+    newWpl.rcNormalPosition.left -= diffX;
+    newWpl.rcNormalPosition.right -= diffX;
+    newWpl.rcNormalPosition.top -= diffY;
+    newWpl.rcNormalPosition.bottom -= diffY;
+    newWpl.ptMaxPosition.x -= diffX;
+    newWpl.ptMaxPosition.y -= diffY;
+    newWpl.ptMinPosition.x -= diffX;
+    newWpl.ptMinPosition.y -= diffY;
+
+    // apparent SetWindowPlacement don't work if it's maximized
+    if((newWpl.showCmd & SW_MAXIMIZE)) {
+        auto old = newWpl.showCmd;
+        newWpl.showCmd &= ~SW_MAXIMIZE;
+        newWpl.showCmd |= SW_RESTORE;
+        SetWindowPlacement(hwnd, &newWpl);
+        newWpl.showCmd = old;
+    }
+    SetWindowPlacement(hwnd, &newWpl);
+    Sleep(50);
+
+    CreateThumbnails(g_programState.filter);
+    SetThumbnails();
+    RedrawWindow(g_programState.hWnd, NULL, 0, RDW_INVALIDATE);
+
+    auto foundSlot = std::find_if(g_programState.slots.begin(),
+        g_programState.slots.end(),
+        [&hwnd](SlotThing_t& sthing)->bool {
+            return sthing.hwnd == hwnd;
+    });
+    if(foundSlot != g_programState.slots.end()) {
+        g_programState.activeSlot = foundSlot - g_programState.slots.begin();
+        MoveCursorOverActiveSlot();
+    }
 }
 
 //
@@ -343,6 +434,19 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                 // force redraw window (the labels)
                 RedrawWindow(hWnd, NULL, NULL, RDW_INVALIDATE);
             }
+            break;
+        case MY_MOVE_TO_1_ID:
+        case MY_MOVE_TO_2_ID:
+        case MY_MOVE_TO_3_ID:
+        case MY_MOVE_TO_4_ID:
+        case MY_MOVE_TO_5_ID:
+        case MY_MOVE_TO_6_ID:
+        case MY_MOVE_TO_7_ID:
+        case MY_MOVE_TO_8_ID:
+        case MY_MOVE_TO_9_ID:
+        case MY_MOVE_TO_10_ID:
+            log(_T("message was %ld\n"), message);
+            MoveToMonitor(wmId - MY_MOVE_TO_BASE_ID);
             break;
         default:
             return DefWindowProc(hWnd, message, wParam, lParam);
