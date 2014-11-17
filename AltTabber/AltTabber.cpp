@@ -269,7 +269,7 @@ static void ShowContextMenu(int x, int y)
         auto isIconic = IsIconic(g_programState.slots[g_programState.activeSlot].hwnd);
         auto mis = GetMonitorGeometry();
         auto size = mis.monitors.size();
-        if(/*!isIconic &&*/ size > 1 && size <= 10)
+        if(!isIconic && size > 1 && size <= 10)
         {
             AppendMenu(ctxMenu, MF_SEPARATOR, 0, NULL);
             for(size_t i = 0; i < size; ++i) {
@@ -279,7 +279,7 @@ static void ShowContextMenu(int x, int y)
             }
         } else if(isIconic) {
             AppendMenu(ctxMenu, MF_SEPARATOR, 0, NULL);
-            AppendMenu(ctxMenu, MF_STRING | MF_DISABLED, 0, _T("Window is minimized."));
+            AppendMenu(ctxMenu, MF_STRING | MF_DISABLED, 0, _T("Window is minimized"));
         }
 
         TrackPopupMenu(ctxMenu, 
@@ -331,22 +331,36 @@ void MoveToMonitor(unsigned int monitor)
     auto oldMonitor = *found;
 
     newWpl.rcNormalPosition = wpl.rcNormalPosition;
-    int diffX = oldMonitor.extent.left - mi.extent.left;
-    int diffY = oldMonitor.extent.top - mi.extent.top;
-    newWpl.rcNormalPosition.left -= diffX;
-    newWpl.rcNormalPosition.right -= diffX;
-    newWpl.rcNormalPosition.top -= diffY;
-    newWpl.rcNormalPosition.bottom -= diffY;
-    newWpl.ptMaxPosition.x -= diffX;
-    newWpl.ptMaxPosition.y -= diffY;
-    newWpl.ptMinPosition.x -= diffX;
-    newWpl.ptMinPosition.y -= diffY;
+    int diffX = newWpl.rcNormalPosition.right - newWpl.rcNormalPosition.left;
+    int diffY = newWpl.rcNormalPosition.bottom - newWpl.rcNormalPosition.top;
+
+    MONITORINFO minfoOld;
+    minfoOld.cbSize = sizeof(MONITORINFO);
+    GetMonitorInfo(oldMonitor.hMonitor, &minfoOld);
+    MONITORINFO minfoNew;
+    minfoNew.cbSize = sizeof(MONITORINFO);
+    GetMonitorInfo(mi.hMonitor, &minfoNew);
+
+    newWpl.rcNormalPosition.left = minfoNew.rcWork.left + (newWpl.rcNormalPosition.left - minfoOld.rcWork.left);
+    newWpl.rcNormalPosition.right = newWpl.rcNormalPosition.left + diffX;
+    newWpl.rcNormalPosition.top = minfoNew.rcWork.top + (newWpl.rcNormalPosition.top - minfoOld.rcWork.top);
+    newWpl.rcNormalPosition.bottom = newWpl.rcNormalPosition.top + diffY;
+    newWpl.ptMaxPosition.x = minfoNew.rcWork.left;
+    newWpl.ptMaxPosition.y = minfoNew.rcWork.top;
 
     // apparent SetWindowPlacement don't work if it's maximized
-    if((newWpl.showCmd & SW_MAXIMIZE)) {
+    if(newWpl.showCmd == SW_MAXIMIZE) {
         PostMessage(hwnd, WM_SYSCOMMAND, SC_RESTORE, 0);
+        SetWindowPlacement(hwnd, &newWpl);
+    } else if(newWpl.showCmd == SW_MINIMIZE) {
+        // FIXME
+        // right now moving minimized windows is disabled
+        // mostly because I don't know how to handle the
+        // minimized maximized window case properly
+        SetWindowPlacement(hwnd, &newWpl);
+    } else {
+        SetWindowPlacement(hwnd, &newWpl);
     }
-    SetWindowPlacement(hwnd, &newWpl);
     Sleep(50);
 
     CreateThumbnails(g_programState.filter);
