@@ -540,7 +540,11 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         case VK_APPS: // menu key
             if(g_programState.activeSlot >= 0) {
                 RECT r = g_programState.slots[g_programState.activeSlot].r;
-                ShowContextMenu(r.left, r.top);
+                POINT p;
+                p.x = r.left;
+                p.y = r.top;
+                ClientToScreen(hWnd, &p);
+                ShowContextMenu(p.x, p.y);
             }
             break;
         case VK_ESCAPE:
