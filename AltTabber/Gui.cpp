@@ -430,7 +430,7 @@ void OnPaint(HDC hdc)
 
                     POINT location = {
                         (r.right + r.left) / 2 - size.cx / 2,
-                        ((long)j / l1) * hs + 2 * hs / 3 - size.cy,
+                        r.top + 2 * hs / 3 - size.cy,
                     };
 
                     DeleteBitmap(iconInfo.hbmColor);
