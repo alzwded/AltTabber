@@ -411,6 +411,24 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             break; }
         }
         break; }
+    case WM_SYSCOMMAND:
+        switch (wParam)
+        {
+        case SC_KEYMENU:
+            log(_T("SC_KEYMNU triggered\n"));
+            if(g_programState.activeSlot >= 0) {
+                RECT r = g_programState.slots[g_programState.activeSlot].r;
+                POINT p;
+                p.x = r.left;
+                p.y = r.top;
+                ClientToScreen(hWnd, &p);
+                ShowContextMenu(p.x, p.y);
+            }
+            break;
+        default:
+            return DefWindowProc(hWnd, message, wParam, lParam);
+        }
+        break;
     case WM_COMMAND:
         wmId    = LOWORD(wParam);
         wmEvent = HIWORD(wParam);
