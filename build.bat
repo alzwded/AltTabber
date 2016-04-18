@@ -8,7 +8,7 @@ GOTO :options
 
 :options
 ECHO Usage: %0 ^(compile^|clean^|rebuild^)
-EXIT 255
+EXIT /B 255
 
 :fullRebuild
 msbuild /property:Configuration=Release /property:Platform=x64 /target:Clean
