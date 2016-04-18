@@ -70,6 +70,17 @@ void QuitOverlay()
         
         RECT r;
         BOOL hrGWR = GetWindowRect(hwnd, &r);
+		{
+			POINT p = {r.left, r.top};
+			LogicalToPhysicalPoint(hwnd, &p);
+			r.left = p.x;
+			r.top = p.y;
+			p.x = r.right;
+			p.y = r.bottom;
+			LogicalToPhysicalPoint(hwnd, &p);
+			r.right = p.x;
+			r.bottom = p.y;
+		}
         POINT p;
         BOOL hrGCP = GetCursorPos(&p);
 

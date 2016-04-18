@@ -72,6 +72,8 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
     UNREFERENCED_PARAMETER(hPrevInstance);
     UNREFERENCED_PARAMETER(lpCmdLine);
 
+	SetProcessDPIAware();
+
      // TODO: Place code here.
     MSG msg;
     HACCEL hAccelTable;
