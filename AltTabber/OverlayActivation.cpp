@@ -68,9 +68,17 @@ void QuitOverlay()
         // I don't really need to do this since windows seem to sometimes do
         // it automatically, but it's curtosy (or however you spell it)
         
+		// update 2016: virtualized coordinates are more convoluted than I thought
+		//              GetWindowRect gives me logical coordinates, which may or may
+		//              not be real. GetCursorPos returns the same coordinates as
+		//              not dpi aware applications, despite me declaring >this< as 
+		//              dpi aware. GetPhysicalCursorPos seems to return the real
+		//              mouse position (which is what I hope).
+		// TODO test on windows 10
         RECT r;
         BOOL hrGWR = GetWindowRect(hwnd, &r);
 		{
+			log(_T("transformed [%d,%d,%d,%d] "), r.left, r.top, r.right, r.bottom);
 			POINT p = {r.left, r.top};
 			LogicalToPhysicalPoint(hwnd, &p);
 			r.left = p.x;
@@ -80,9 +88,13 @@ void QuitOverlay()
 			LogicalToPhysicalPoint(hwnd, &p);
 			r.right = p.x;
 			r.bottom = p.y;
+
+			log(_T("to [%d,%d,%d,%d]\n"), r.left, r.top, r.right, r.bottom);
 		}
         POINT p;
-        BOOL hrGCP = GetCursorPos(&p);
+
+        BOOL hrGCP = GetPhysicalCursorPos(&p);
+		log(_T("cursor at %d,%d\n"), p.x, p.y);
 
         auto& mis = monitorGeom;
         if(hrGWR != FALSE && hrGCP != FALSE && !PtInRect(&r, p)) {

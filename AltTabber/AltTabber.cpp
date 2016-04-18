@@ -72,9 +72,12 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
     UNREFERENCED_PARAMETER(hPrevInstance);
     UNREFERENCED_PARAMETER(lpCmdLine);
 
+	// TODO still not clear if I still need to call this
+	//      or not, given that the manifest says this is
+	//      dpi aware. Hope to some day figure out if this
+	//      is needed/or not/or harmless
 	SetProcessDPIAware();
 
-     // TODO: Place code here.
     MSG msg;
     HACCEL hAccelTable;
 
