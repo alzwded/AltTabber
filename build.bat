@@ -11,9 +11,9 @@ ECHO Usage: %0 ^(compile^|clean^|rebuild^)
 EXIT /B 255
 
 :fullRebuild
-msbuild /property:Configuration=Release /property:Platform=x64 /target:Clean
-msbuild /property:Configuration=Release /property:Platform=Win32 /target:Clean
-GOTO :compile
+CALL :clean
+CALL :compile
+GOTO :EOF
 
 :compile
 msbuild /property:Configuration=Release /property:Platform=x64 && msbuild /property:Configuration=Release /property:Platform=Win32
