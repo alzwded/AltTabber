@@ -498,6 +498,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             auto mi = GetMonitorGeometry();
             LineTo(hdc, mi.r.right - mi.r.left, mi.r.bottom - mi.r.top);
             SelectObject(hdc, original);
+            DeleteObject(pen);
 
             OnPaint(hdc);
         }
