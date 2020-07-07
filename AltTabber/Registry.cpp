@@ -41,6 +41,7 @@ void SynchronizeWithRegistry()
     DWORD dModifiers = (DWORD)g_programState.hotkey.modifiers;
     DWORD dKey = (DWORD)g_programState.hotkey.key;
     DWORD dSize = sizeof(DWORD);
+    DWORD dResetOnClose = (DWORD)g_programState.resetOnClose;
 
     switch(disposition) {
     case REG_CREATED_NEW_KEY: {
@@ -60,6 +61,16 @@ void SynchronizeWithRegistry()
             0,
             REG_DWORD,
             (BYTE*)&dKey,
+            sizeof(DWORD));
+        if(hr != ERROR_SUCCESS) {
+            log(_T("RegSetValue failed %d: errno %d\n"), hr, GetLastError());
+            return;
+        }
+        hr = RegSetValueEx(phk,
+            _T("resetOnClose"),
+            0,
+            REG_DWORD,
+            (BYTE*)&dResetOnClose,
             sizeof(DWORD));
         if(hr != ERROR_SUCCESS) {
             log(_T("RegSetValue failed %d: errno %d\n"), hr, GetLastError());
@@ -90,9 +101,20 @@ void SynchronizeWithRegistry()
             log(_T("RegQueryValue failed %d: errno %d\n"), hr, GetLastError());
             return;
         }
+        hr = RegQueryValueEx(phk,
+            _T("resetOnClose"),
+            0,
+            NULL,
+            (BYTE*)&dResetOnClose,
+            &dSize);
+        if(hr != ERROR_SUCCESS) {
+            log(_T("RegQueryValue failed %d: errno %d\n"), hr, GetLastError());
+            return;
+        }
 
         g_programState.hotkey.modifiers = (UINT)(ULONG)dModifiers;
         g_programState.hotkey.key = (UINT)(ULONG)dKey;
+        g_programState.resetOnClose = dKey != 0x0;
         break;
     }
 }

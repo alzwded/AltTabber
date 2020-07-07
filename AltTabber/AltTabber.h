@@ -36,6 +36,7 @@ typedef struct {
         UINT key;
     } hotkey;
     DWORD compatHacks;
+    BOOL resetOnClose;
 
     HWND hWnd;
     std::map<HMONITOR, std::vector<AppThumb_t> > thumbnails;

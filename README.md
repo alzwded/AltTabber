@@ -35,6 +35,8 @@ If you mess something up, just delete the `HKEY_CURRENT_USER\Software\jakka\AltT
 
 If you want to remove this app from your computer forever, remember to also delete that key. No uninstaller is currently provided, and it's unlikely that one will be provided anytime in the future.
 
+That key also contains a flag, `resetOnClose`, which, if set to `0x00000000`, will prevent the AltTabber interface from being reset when you close a window using the context menu.
+
 Disclaimer
 ==========
 

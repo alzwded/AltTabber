@@ -39,17 +39,19 @@ extern void OnPaint(HDC);
 extern void MoveCursorOverActiveSlot(); 
 
 ProgramState_t g_programState = {
-    FALSE,
-    NULL,
-    -1,
-    FALSE,
-    NULL,
+    /*showing=*/FALSE,
+    /*prevActiveWindow=*/NULL,
+    /*activeSlot=*/-1,
+    /*logging=*/FALSE,
+    /*freopened=*/NULL,
+    /*hotkey=*/
 #ifdef JAT_OLD_HOTKEY
     { MOD_ALT | MOD_CONTROL, '3' },
 #else
     { MOD_ALT, VK_OEM_3 },
 #endif
-    0,
+    /*compatHacks=*/0,
+    /*resetOnClose=*/false,
 };
 
 // Global Variables:
@@ -456,16 +458,18 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             if(g_programState.activeSlot >= 0) {
                 auto& slot = g_programState.slots[g_programState.activeSlot];
                 PostMessage(slot.hwnd, WM_SYSCOMMAND, SC_CLOSE, -1);
-                // clear the filter because of use case
-                if(g_programState.slots.size() <= 2) {
-                    g_programState.filter = L"";
+                if(g_programState.resetOnClose) {
+                    // clear the filter because of use case
+                    if(g_programState.slots.size() <= 2) {
+                        g_programState.filter = L"";
+                    }
+                    // rebuild thumbnails because filter was changed
+                    // and there are maybe dangling slots
+                    CreateThumbnails(g_programState.filter);
+                    SetThumbnails();
+                    // force redraw window (the labels)
+                    RedrawWindow(hWnd, NULL, NULL, RDW_INVALIDATE);
                 }
-                // rebuild thumbnails because filter was changed
-                // and there are maybe dangling slots
-                CreateThumbnails(g_programState.filter);
-                SetThumbnails();
-                // force redraw window (the labels)
-                RedrawWindow(hWnd, NULL, NULL, RDW_INVALIDATE);
             }
             break;
         case MY_MOVE_TO_1_ID:
