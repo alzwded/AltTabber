@@ -50,6 +50,7 @@ static void MoveNextGeographically(POINT p)
 
     if(found != slots.end()) {
         g_programState.activeSlot = (long)(found - slots.begin());
+        if(g_programState.uiaProvider) g_programState.uiaProvider->SelectionChanged();
         return;
     }
     /* else */
@@ -77,6 +78,7 @@ static void MoveNextGeographically(POINT p)
     
     if(found2 != slots.end()) {
         g_programState.activeSlot = (long)(found2 - slots.begin());
+        if(g_programState.uiaProvider) g_programState.uiaProvider->SelectionChanged();
         return;
     }
     
@@ -89,6 +91,7 @@ void MoveNext(DWORD direction)
     if(g_programState.activeSlot < 0) {
         if(g_programState.slots.size() > 0) {
             g_programState.activeSlot = (long)(g_programState.slots.size() - 1);
+            if(g_programState.uiaProvider) g_programState.uiaProvider->SelectionChanged();
         } else {
             return;
         }
@@ -134,6 +137,8 @@ void MoveNext(DWORD direction)
                 (void*)g_programState.slots[g_programState.activeSlot].hwnd);
     }
 
+    if(g_programState.uiaProvider) g_programState.uiaProvider->SelectionChanged();
+
     MoveCursorOverActiveSlot();
 
     RedrawWindow(g_programState.hWnd, NULL, NULL, RDW_INVALIDATE);
@@ -152,6 +157,7 @@ void SelectByMouse(DWORD lParam)
     if(found != g_programState.slots.end()) {
         g_programState.activeSlot = (long)(found - g_programState.slots.begin());
         RedrawWindow(g_programState.hWnd, NULL, NULL, RDW_INVALIDATE);
+        if(g_programState.uiaProvider) g_programState.uiaProvider->SelectionChanged();
     }
 }
 

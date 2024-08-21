@@ -25,6 +25,7 @@
 
 #include <algorithm>
 #include <iterator>
+#include <cstdint>
 
 #include <Dwmapi.h>
 #include <Windowsx.h>
@@ -32,6 +33,9 @@
 #include <Shellapi.h>
 #include <Psapi.h>
 #include <Winuser.h>
+
+#include <ole2.h> // must come before UIAutomation.h
+#include <UIAutomation.h>
 
 #include <dwmapi.h>
 

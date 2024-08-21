@@ -24,11 +24,20 @@ void ActivateSwitcher()
             0, 0,
             SWP_SHOWWINDOW | SWP_NOSENDCHANGING);
     log(_T("SetWindowPos returned %d: errno %d\n"), hrSWP, GetLastError());
+#if 1
     hrSWP = SetWindowPos(g_programState.hWnd,
             HWND_TOPMOST,
             monitorGeom.r.left, monitorGeom.r.top,
             monitorGeom.r.right - monitorGeom.r.left, monitorGeom.r.bottom - monitorGeom.r.top,
             SWP_NOSENDCHANGING);
+#else
+    // DEBUG CODE DELETE ME
+    hrSWP = SetWindowPos(g_programState.hWnd,
+            HWND_TOPMOST,
+            monitorGeom.r.left, monitorGeom.r.top,
+            monitorGeom.r.right - monitorGeom.r.left, monitorGeom.r.bottom - monitorGeom.r.top - 1080,
+            SWP_NOSENDCHANGING);
+#endif
     log(_T("SetWindowPos returned %d: errno %d\n"), hrSWP, GetLastError());
 
     g_programState.filter = _T("");
@@ -36,6 +45,8 @@ void ActivateSwitcher()
     SetThumbnails();
 
     MoveCursorOverActiveSlot();
+
+    if(g_programState.uiaProvider) g_programState.uiaProvider->SelectionChanged();
 }
 
 void QuitOverlay()
@@ -59,10 +70,10 @@ void QuitOverlay()
             // its internal min/max state being broken; by sending
             // that window an actual message, things seem to work fine
 
-            auto hr = PostMessage(hwnd, WM_SYSCOMMAND, SC_RESTORE, 0);
-            //auto hr = SendMessage(hwnd, WM_SYSCOMMAND, SC_RESTORE, 0);
-            //auto hr = OpenIcon(hwnd);
-            log(_T("restoring %p hr = %ld\n"), (void*)hwnd, hr);
+            auto hr1 = PostMessage(hwnd, WM_SYSCOMMAND, SC_RESTORE, 0);
+            //auto hr1 = SendMessage(hwnd, WM_SYSCOMMAND, SC_RESTORE, 0);
+            //auto hr1 = OpenIcon(hwnd);
+            log(_T("restoring %p hr = %ld\n"), (void*)hwnd, hr1);
         }
 
         // I don't really need to do this since windows seem to sometimes do
@@ -133,4 +144,6 @@ void QuitOverlay()
             }
         }
     }
+
+    if(g_programState.uiaProvider) g_programState.uiaProvider->SelectionChanged();
 }

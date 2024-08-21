@@ -32,10 +32,9 @@ The `key` value is one of [these](http://msdn.microsoft.com/en-us/library/window
 For example, you can set the `modifiers` value to `3` (Alt + Ctrl) and the `key` value to `33` (the `3` key). If you didn't catch on, the aforementioned values are numbers in hexadecimal.
 
 If you mess something up, just delete the `HKEY_CURRENT_USER\Software\jakka\AltTabber` key and the app will make sure to recreate it again from defaults.
+ which, if set to `0x00000000`, will prevent the AltTabber interface from being reset when you close a window using the context menu.
 
-If you want to remove this app from your computer forever, remember to also delete that key. No uninstaller is currently provided, and it's unlikely that one will be provided anytime in the future.
-
-That key also contains a flag, `resetOnClose`, which, if set to `0x00000000`, will prevent the AltTabber interface from being reset when you close a window using the context menu.
+Accessibility is not thoroughly tested. If you do test it, and it has problems, do let me know. Though I understand both JAWS and NVDA already have a fancy window list builtin, so I'd also like to know why you are here :-).
 
 Disclaimer
 ==========

@@ -160,11 +160,11 @@ static BOOL CALLBACK enumWindows(HWND hwnd, LPARAM lParam)
                     : (g_programState.sleptThroughNWindows < 20)
                     ? 10
                     : 5;
-            auto hr = SendMessageTimeout(hwnd, WM_GETICON, ICON_BIG, 0,
+            auto lr = SendMessageTimeout(hwnd, WM_GETICON, ICON_BIG, 0,
                 SMTO_ABORTIFHUNG | SMTO_ERRORONEXIT,
                 sleepAmount /*ms*/,
                 &lresult);
-            if(hr) {
+            if(lr) {
                 g_programState.sleptThroughNWindows++;
                 hIcon = (HICON)lresult;
             } else {
@@ -270,8 +270,8 @@ void SetThumbnails()
                 DWM_THUMBNAIL_PROPERTIES thProps;
                 thProps.dwFlags = DWM_TNP_RECTDESTINATION | DWM_TNP_VISIBLE;
 
-                SIZE ws;
-                HRESULT haveThumbSize = DwmQueryThumbnailSourceSize(thumb.thumb, &ws);
+                SIZE ws1;
+                HRESULT haveThumbSize = DwmQueryThumbnailSourceSize(thumb.thumb, &ws1);
                 if(haveThumbSize == S_OK) {
                     SIZE rs;
                     rs.cx = r.right - r.left;
@@ -282,7 +282,7 @@ void SetThumbnails()
                     dRect.top = r.top;
 
                     float rRap = (float)rs.cx / (float)rs.cy;
-                    float sRap = (float)ws.cx / (float)ws.cy;
+                    float sRap = (float)ws1.cx / (float)ws1.cy;
                     if(sRap > rRap) {
                         dRect.right = r.right;
                         LONG h = (LONG)(rs.cx / sRap);
@@ -328,6 +328,8 @@ void SetThumbnails()
     if(g_programState.activeSlot < 0 && g_programState.slots.size() > 0) {
         g_programState.activeSlot = 0;
     }
+
+    if(g_programState.uiaProvider) g_programState.uiaProvider->Invalidate();
 }
 
 void OnPaint(HDC hdc)

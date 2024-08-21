@@ -52,6 +52,7 @@ ProgramState_t g_programState = {
 #endif
     /*compatHacks=*/0,
     /*resetOnClose=*/false,
+    /*uiaProvider=*/NULL,
 };
 
 // Global Variables:
@@ -381,6 +382,7 @@ void MoveToMonitor(unsigned int monitor)
     });
     if(foundSlot != g_programState.slots.end()) {
         g_programState.activeSlot = (long)(foundSlot - g_programState.slots.begin());
+        if(g_programState.uiaProvider) g_programState.uiaProvider->SelectionChanged();
         MoveCursorOverActiveSlot();
     }
 }
@@ -489,6 +491,16 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             return DefWindowProc(hWnd, message, wParam, lParam);
         }
         break;
+    case WM_GETOBJECT: {
+        if (static_cast<long>(lParam) == static_cast<long>(UiaRootObjectId))
+        {
+            if(g_programState.uiaProvider == NULL) {
+                g_programState.uiaProvider = new AltTabberUIAProvider(hWnd, &g_programState);
+            }
+            return UiaReturnRawElementProvider(hWnd, wParam, lParam, static_cast<IRawElementProviderSimple*>(g_programState.uiaProvider));
+
+        }
+        } break;
     case WM_PAINT: {
         hdc = BeginPaint(hWnd, &ps);
         // TODO: Add any drawing code here...
