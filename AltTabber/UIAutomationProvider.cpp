@@ -107,7 +107,7 @@ IFACEMETHODIMP AltTabberUIAProvider::GetPropertyValue(PROPERTYID propertyId, VAR
         LoadString(hInstance, IDS_ALTTABBER_CTRL_TYPE, s, sizeof(s));
         pRetVal->bstrVal = SysAllocString(s);
     }
-    else if(propertyId == UIA_HelpTextPropertyId) // or UIA_FullDescriptionPropertyId?
+    else if(propertyId == UIA_HelpTextPropertyId || propertyId == UIA_FullDescriptionPropertyId) // MS Narrator doesn't pick up the HelpText property for some reason
     {
         pRetVal->vt = VT_BSTR;
         TCHAR s[1024];
@@ -374,13 +374,6 @@ IFACEMETHODIMP ThumbnailUIAProvider::GetPropertyValue(PROPERTYID propertyId, VAR
         GetWindowText(m_programState->slots[m_index].hwnd, str, 256);
         str[256] = _T('\0');
         pRetVal->bstrVal = SysAllocString(str);
-    }
-    else if(propertyId == UIA_HelpTextPropertyId|| propertyId == UIA_FullDescriptionPropertyId)
-    {
-        pRetVal->vt = VT_BSTR;
-        TCHAR s[1024];
-        LoadString(hInstance, IDS_ALTTABBER_CTRL_DESCRIPTION, s, sizeof(s));
-        pRetVal->bstrVal = SysAllocString(s);
     }
     else if (propertyId == UIA_ControlTypePropertyId)
     {
