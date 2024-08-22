@@ -63,6 +63,20 @@ static inline BOOL IsAltTabWindow(HWND hwnd)
     }
 #endif
 
+    // Windows 8+ added cloaking
+    DWORD dwmAttributes = 0;
+    HRESULT dwmHR = DwmGetWindowAttribute(hwnd, DWMWA_CLOAKED, &dwmAttributes, sizeof(dwmAttributes));
+    if(dwmHR == S_OK) {
+        log(_T("DwmGetWindowAttribute(%d, DWM_CLOAKED) = %08X\n"),
+            hwnd, dwmAttributes);
+
+        if(0 != (dwmAttributes & (DWM_CLOAKED_APP | DWM_CLOAKED_SHELL | DWM_CLOAKED_INHERITED)))
+            return FALSE;
+    } else {
+        log(_T("Failed to get DwmGetWindowAttribute DWM_CLOACKED for %d, hr %d\n"),
+            hwnd, dwmHR);
+    }
+
     return TRUE;
 }
 
@@ -114,8 +128,8 @@ static BOOL CALLBACK enumWindows(HWND hwnd, LPARAM lParam)
 
     log(_T("the label is: %ls\n"), title.c_str());
 
-    std::transform(title.begin(), title.end(), title.begin(), ::tolower);
-    std::transform(filter.begin(), filter.end(), filter.begin(), ::tolower);
+    std::transform(title.begin(), title.end(), title.begin(), ::_totlower);
+    std::transform(filter.begin(), filter.end(), filter.begin(), ::_totlower);
     if(!filter.empty() && title.find(filter) == std::wstring::npos) {
         return TRUE;
     }
