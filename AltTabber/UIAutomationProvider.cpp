@@ -460,7 +460,7 @@ IFACEMETHODIMP ThumbnailUIAProvider::GetRuntimeId(SAFEARRAY ** pRetVal)
     SAFEARRAY *psa = SafeArrayCreateVector(VT_I4, 0, 2);
     for (LONG i = 0; i < 2; i++)
     {
-        SafeArrayPutElement(psa, &i, &(rId[i]));
+        (void) SafeArrayPutElement(psa, &i, &(rId[i]));
     }
     *pRetVal = psa;
     return S_OK;
