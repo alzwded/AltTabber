@@ -38,6 +38,9 @@ If you want to remove this app from your computer forever, remember to also dele
 
 That key also contains a flag, `resetOnClose`, which, if set to `0x00000000`, will prevent the AltTabber interface from being reset when you close a window using the context menu.
 
+Accessibility
+-------------
+
 As of version 1.9, AltTabber implements [UI Automation](https://learn.microsoft.com/en-us/windows/win32/winauto/uiauto-uiautomationoverview). The overview presents the thumbnails as *button* control types with the *invoke* pattern. The window title is read when one of these thumbnail buttons comes into view (same text that you see rendered on screen). It is recommended to use AltTabber's builtin keyboard navigation (i.e. `TAB`, `SHIFT`+`TAB`, `ENTER` and `ESCAPE`) since that is the code path that was most thoroughly tested in the past decade. Screen reader commands to the tune of "move to next control" and "activate/invoke" control seem to work, but I am not a proficient AT user, so it's hard to judge if I got the UIA provider implementation right.
 
 Accessibility is not thoroughly tested. If you do test it, and it has problems, do let me know. Though I understand both JAWS and NVDA already have a fancy window list builtin, so I'd also like to know why you are here :-).
