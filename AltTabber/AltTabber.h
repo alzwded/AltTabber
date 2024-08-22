@@ -40,6 +40,7 @@ typedef struct {
     DWORD compatHacks;
     BOOL resetOnClose;
     AltTabberUIAProvider* uiaProvider;
+    DWORD rebuildingSlots; // this is not a lock and it probably does nothing, but I swear I saw one crash in the UIA thread which I could not reproduce
 
     HWND hWnd;
     std::map<HMONITOR, std::vector<AppThumb_t> > thumbnails;

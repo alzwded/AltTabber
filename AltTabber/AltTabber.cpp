@@ -53,6 +53,7 @@ ProgramState_t g_programState = {
     /*compatHacks=*/0,
     /*resetOnClose=*/false,
     /*uiaProvider=*/NULL,
+    /*rebuildingSlots=*/0
 };
 
 // Global Variables:

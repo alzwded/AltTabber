@@ -261,6 +261,7 @@ void PerformSlotting(F&& functor)
 void SetThumbnails()
 {
     g_programState.activeSlot = -1;
+    InterlockedIncrement(&g_programState.rebuildingSlots);
     g_programState.slots.clear();
     //ShowWindow(g_programState.hWnd, SW_HIDE);
     size_t nthSlot = 0;
@@ -342,6 +343,8 @@ void SetThumbnails()
     if(g_programState.activeSlot < 0 && g_programState.slots.size() > 0) {
         g_programState.activeSlot = 0;
     }
+
+    InterlockedDecrement(&g_programState.rebuildingSlots);
 
     if(g_programState.uiaProvider) g_programState.uiaProvider->Invalidate();
 }

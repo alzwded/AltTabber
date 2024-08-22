@@ -512,5 +512,8 @@ bool ThumbnailUIAProvider::Invalid()
     //
     // I don't have the energy to figure out how to do all these things atomically,
     // so just check for some sort of validity to avoid unhandled exceptions in threads.
-    return m_index < 0 || m_index >= m_programState->slots.size() || m_index >= m_parent->m_slotProviders.size();
+    return m_index < 0
+        || m_index >= m_programState->slots.size() 
+        || m_index >= m_parent->m_slotProviders.size()
+        || m_programState->rebuildingSlots;
 }
