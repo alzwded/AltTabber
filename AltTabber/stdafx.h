@@ -34,11 +34,11 @@
 #include <Psapi.h>
 #include <Winuser.h>
 
-#include <ole2.h> // must come before UIAutomation.h
-#include <UIAutomation.h>
-
 #include <dwmapi.h>
 
 #include <vector>
 #include <map>
 #include <string>
+
+#include <ole2.h> // must come before UIAutomation.h
+#include <UIAutomation.h>
