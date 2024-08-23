@@ -49,6 +49,13 @@ As of version 1.9, AltTabber implements [UI Automation](https://learn.microsoft.
 
 Accessibility is not thoroughly tested. If you do test it, and it has problems, do let me know. Though I understand both JAWS and NVDA already have a fancy window list builtin, so I'd also like to know why you are here :-).
 
+Getting AltTabber
+-----------------
+
+You should fetch the .exe from [Github Releases](https://github.com/alzwded/AltTabber/releases). You will need some sort of MSVCRT installed, but you must get that from Microsoft. Check the `vcxproj`'s *Release* *x64* configuration to see what toolset it was built with; you'll need the MSVCRT from that era. I have always been in a situation where these were installed already, so I never bothered to figure out exactly which one you need at any given moment in time.
+
+You can build it from source with whatever the version du jour of Visual Studio Community is. If it complains about toolsets or SDKs, just pick whatever your installation came with, this project should have no special requirements w.r.t. the toolchain version. Prefer the *Release* *x64* configuration. The 32 bit configuration has fundamental issues trying to fetch information for 64 bit running applications. Building from source will guarantee you have the appropriate MSVCRT installed as a by-product of setting up the toolchain.
+
 Hacking
 -------
 
