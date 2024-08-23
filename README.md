@@ -81,10 +81,10 @@ This project was a hackjob to begin with, but here is an outline:
   * the global `ProgramState_t` holds a reference to the root provider, if any, in order to ping it when state changed
   * as the main message loop is in `AltTabber.cpp`, it is created there (upon `WM_GETOBJECT` being received)
   * There is an atomic int called `rebuildingSlots` which is used as a mutex (which is not the same thing) in order to prevent access to the slots while they are rebuilding, because *UI Automation* injects threads in the application. This should be a Mutex, but that is heavy handed when UIA is not running. This appears good enough as I couldn't reproduce seg faults anymore on either high end or low end hardware; if you can, switch this to a mutex.
-- Localization: ahahahahaha! While I do speak multiple languages, feel free to run this README through Google Translate, and that's all you need to know. HOWEVER...
+- Localization: feel free to run this README through Google Translate, and that's all you need to know. HOWEVER...
   * this is probably more important for A11Y. The strings used there are part of the .rc file, so if anyone feels like translating them, they can. But there's not much there; there's some cheesy help text explaining keyboard bindings, and the F1 dialog, and context menu strings. Not sure it's worth the effort, honestly. But if you want to do it, read up on how to add other languages to the string tables in resource files.
   * also, it's probably important for RTL languages. Never tested with those, I don't live in an environment where I encounter these. The app is UTF-16/UCS-2 and uses native windows API, it should work question mark? Dunno.
-
+  * for the most part, you're only ever seeing strings forced upon you by literally all other applications. You might get an error message complaining the hotkey is already registered when starting this up.
 
 A large amount of windows need to be filtered out. You'd be surprised how many eye candy rich apps have a ton of floating BS to make them look pretty. Windows 8 added *cloaking* to have an intended way to do this. *Cloaked* windows participate in DWM rendering, but they are meant to be ignored for all intents and purposes, i.e. all the BS that older applications used to do for eye candy effects.
 
