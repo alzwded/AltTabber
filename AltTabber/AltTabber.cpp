@@ -504,7 +504,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         } break;
     case WM_PAINT: {
         hdc = BeginPaint(hWnd, &ps);
-        // TODO: Add any drawing code here...
         if(g_programState.showing)
         {
             HGDIOBJ original = NULL;
