@@ -3,7 +3,7 @@ AltTabber
 
 AltTabber started back in the Windows 7 days out of frustration with managing a large number of windows. There were no good virtual desktop implementations, and the taskbar was getting ever more annoying compared to ancient versions of Windows. Additionally, I started having more and more monitors connected, and it was getting a bit out of hand to quickly identify "the Visual Studio that's on the 3rd monitor".
 
-The goals of this project were to have a hotkey activation, similar to `ALT` + `TAB` or Gnome's `ALT` + `F1` / `super`, which would lay out a grid of all windows present on a monitor. The grid(s) may be filtered with a simple search string. You may activate windows primarily through keyboard use, but mouse is supported. It shall show *DWM* live thumbnails if Aero is running. It shall be lightweight.
+The goals of this project were to have a hotkey activation, similar to `ALT` + `TAB` or Gnome's `ALT` + `F1` / `super`, which would lay out a grid of all windows present on each monitor in a multimonitor setup. The grid(s) may be filtered with a simple search string. You may activate windows primarily through keyboard use, but mouse is supported. It shall show *DWM* live thumbnails if Aero is running. It shall be lightweight.
 
 This was successful, but Windows has made things less of a problem as we went from 7 through 8.1 to 11. But I still use it purely because of AltTabber's keyboard-first design, and especially because I can very quickly type *n o t e p a d* and list all 20 open notepad windows, and I can then figure out where I wanted to go.
 
@@ -72,6 +72,7 @@ This project was a hackjob to begin with, but here is an outline:
 - `Gui.cpp` basically contains the window `OnPaint` function, but also additional layouting to position DWM Thumbnails
   * it still has the *icons* code path, which is a holdover from Windows 7, where *Aero* might not have been running. This is no longer applicable on Windows 8+
   * I opted to have a bit OnPaint function which renders the grid, because constantly creating/destroying e.g. MFC controls can get stupid slow and complicate things. We just need to lay out a grid of labels with some space set aside for live thumbnails, it's not that hard to write/maintain
+  * `PerformSlotting` is what lays out the slots in per-monitor grids.
 - `Log.cpp` has the log implementation. Normally, logs go `>NUL`. Logging must be turned on with the `F2` key, which will write the file out to a tempfile. It force flushes after each print, to support re-living the final moments before it goes bang.
 - `MoveFunctions.cpp` contains spaghetti logic dealing with keyboard arrow or mouse movement between grid cells. This makes stuff like using the arrow keys to go cross monitors work.
 - `MonitorGeom.cpp` contains code to figure out where all your monitors are. Windows is a bit like X11, and there is a single giant canvas, with monitors being views on this canvas. Unlike X11, I don't think monitors may be positioned arbitrarily, at least not to my knowledge. I have only tested with monitors whose bounds touch :-) But I have extensively used this with monitors with mismatched resolutions, arranged both vertically and horizontally
@@ -80,6 +81,9 @@ This project was a hackjob to begin with, but here is an outline:
   * the global `ProgramState_t` holds a reference to the root provider, if any, in order to ping it when state changed
   * as the main message loop is in `AltTabber.cpp`, it is created there (upon `WM_GETOBJECT` being received)
   * There is an atomic int called `rebuildingSlots` which is used as a mutex (which is not the same thing) in order to prevent access to the slots while they are rebuilding, because *UI Automation* injects threads in the application. This should be a Mutex, but that is heavy handed when UIA is not running. This appears good enough as I couldn't reproduce seg faults anymore on either high end or low end hardware; if you can, switch this to a mutex.
+- Localization: ahahahahaha! While I do speak multiple languages, feel free to run this README through Google Translate, and that's all you need to know. HOWEVER...
+  * this is probably more important for A11Y. The strings used there are part of the .rc file, so if anyone feels like translating them, they can. But there's not much there; there's some cheesy help text explaining keyboard bindings, and the F1 dialog, and context menu strings. Not sure it's worth the effort, honestly. But if you want to do it, read up on how to add other languages to the string tables in resource files.
+  * also, it's probably important for RTL languages. Never tested with those, I don't live in an environment where I encounter these. The app is UTF-16/UCS-2 and uses native windows API, it should work question mark? Dunno.
 
 
 A large amount of windows need to be filtered out. You'd be surprised how many eye candy rich apps have a ton of floating BS to make them look pretty. Windows 8 added *cloaking* to have an intended way to do this. *Cloaked* windows participate in DWM rendering, but they are meant to be ignored for all intents and purposes, i.e. all the BS that older applications used to do for eye candy effects.
