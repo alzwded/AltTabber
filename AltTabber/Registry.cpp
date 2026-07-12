@@ -101,6 +101,12 @@ void SynchronizeWithRegistry()
             log(_T("RegQueryValue failed %d: errno %d\n"), hr, GetLastError());
             return;
         }
+        g_programState.hotkey.modifiers = (UINT)(ULONG)dModifiers;
+        g_programState.hotkey.key = (UINT)(ULONG)dKey;
+
+        // resetOnClose may be absent in keys created by older versions;
+        // keep the default in that case instead of discarding the hotkey
+        dSize = sizeof(DWORD);
         hr = RegQueryValueEx(phk,
             _T("resetOnClose"),
             0,
@@ -112,9 +118,7 @@ void SynchronizeWithRegistry()
             return;
         }
 
-        g_programState.hotkey.modifiers = (UINT)(ULONG)dModifiers;
-        g_programState.hotkey.key = (UINT)(ULONG)dKey;
-        g_programState.resetOnClose = dKey != 0x0;
+        g_programState.resetOnClose = dResetOnClose != 0x0;
         break;
     }
 }

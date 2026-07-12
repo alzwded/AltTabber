@@ -337,6 +337,7 @@ void MoveToMonitor(unsigned int monitor)
     auto found = std::find_if(mis.monitors.begin(), mis.monitors.end(), [&hmonitor](MonitorInfo_t& mif)->bool {
         return mif.hMonitor == hmonitor;
     });
+    if(found == mis.monitors.end()) return;
     auto oldMonitor = *found;
 
     newWpl.rcNormalPosition = wpl.rcNormalPosition;

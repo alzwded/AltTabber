@@ -104,14 +104,14 @@ IFACEMETHODIMP AltTabberUIAProvider::GetPropertyValue(PROPERTYID propertyId, VAR
     {
         pRetVal->vt = VT_BSTR;
         TCHAR s[64];
-        LoadString(hInstance, IDS_ALTTABBER_CTRL_TYPE, s, sizeof(s));
+        LoadString(hInstance, IDS_ALTTABBER_CTRL_TYPE, s, _countof(s));
         pRetVal->bstrVal = SysAllocString(s);
     }
     else if(propertyId == UIA_HelpTextPropertyId || propertyId == UIA_FullDescriptionPropertyId) // MS Narrator doesn't pick up the HelpText property for some reason
     {
         pRetVal->vt = VT_BSTR;
         TCHAR s[1024];
-        LoadString(hInstance, IDS_ALTTABBER_CTRL_DESCRIPTION, s, sizeof(s));
+        LoadString(hInstance, IDS_ALTTABBER_CTRL_DESCRIPTION, s, _countof(s));
         pRetVal->bstrVal = SysAllocString(s);
     }
     else if (propertyId == UIA_ControlTypePropertyId)
@@ -147,8 +147,8 @@ IFACEMETHODIMP AltTabberUIAProvider::get_HostRawElementProvider(IRawElementProvi
 
 IFACEMETHODIMP AltTabberUIAProvider::Navigate(NavigateDirection direction, IRawElementProviderFragment** pRetVal)
 {
+    *pRetVal = NULL;
     if(m_programState->slots.empty()) {
-        *pRetVal = NULL;
         return S_OK;
     }
     switch (direction) {
@@ -361,7 +361,7 @@ IFACEMETHODIMP ThumbnailUIAProvider::GetPropertyValue(PROPERTYID propertyId, VAR
     {
         pRetVal->vt = VT_BSTR;
         TCHAR s[64];
-        LoadString(hInstance, IDS_THUMBNAIL_CTRL_TYPE, s, sizeof(s));
+        LoadString(hInstance, IDS_THUMBNAIL_CTRL_TYPE, s, _countof(s));
 
         TCHAR s1[64];
         swprintf_s(s1, 63, _T("%s %d"), s, m_index);
@@ -472,7 +472,7 @@ IFACEMETHODIMP ThumbnailUIAProvider::get_BoundingRectangle(UiaRect * pRetVal)
     auto& slot = m_programState->slots[m_index];
     pRetVal->left = slot.r.left;
     pRetVal->width = slot.r.right - slot.r.left;
-    pRetVal->height = slot.r.top - slot.r.bottom;
+    pRetVal->height = slot.r.bottom - slot.r.top;
     pRetVal->top = slot.r.top;
 
     return S_OK;
